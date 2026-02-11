@@ -19,6 +19,8 @@ export interface SmtpConfig {
     user: string;
     password: string;
     from: string;
+    name?: string;
+    picture?: string;
 }
 
 export interface AuthentikConfig {

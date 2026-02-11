@@ -7,9 +7,10 @@ import config from '../config';
 import {
     ArrowLeft, Save, Trash2, Plus, ChevronDown, ChevronRight,
     Wrench, Droplets, ShieldCheck, FileText, Fuel, Settings2,
-    Activity, Gauge, Clock, Wifi, Camera, X as XIcon
+    Activity, Gauge, Clock, Wifi, Camera, X as XIcon, Edit3
 } from 'lucide-react';
 import carPlaceholder from '../assets/car-placeholder.svg';
+import ConfirmationModal from '../components/ConfirmationModal';
 import './VehicleDetailPage.css';
 
 export default function VehicleDetailPage() {
@@ -45,6 +46,10 @@ export default function VehicleDetailPage() {
     // Image upload
     const imageInputRef = useRef<HTMLInputElement>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
+
+    // Edit/Delete state
+    const [showDeleteVehicleModal, setShowDeleteVehicleModal] = useState(false);
+    const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
@@ -109,16 +114,42 @@ export default function VehicleDetailPage() {
 
     const handleAddMaintenance = async () => {
         try {
-            await api.maintenance.create(vehicleId, {
+            const data = {
                 ...maintForm,
                 intervalDays: maintForm.intervalDays ? Number(maintForm.intervalDays) : undefined,
                 intervalKm: maintForm.intervalKm ? Number(maintForm.intervalKm) : undefined,
                 intervalEngineHours: maintForm.intervalEngineHours ? Number(maintForm.intervalEngineHours) : undefined,
-            });
+            };
+
+            if (editingRecordId) {
+                await api.maintenance.update(vehicleId, editingRecordId, data);
+            } else {
+                await api.maintenance.create(vehicleId, data);
+            }
             setShowMaintForm(false);
+            setEditingRecordId(null);
             setMaintForm({ type: 'oil_change', title: '', description: '', date: '', mileage: 0, cost: 0, fuelAmount: 0, fuelPricePerLiter: 0, fuelType: 'Super E5', intervalDays: '', intervalKm: '', intervalEngineHours: '' });
             fetchData();
         } catch (err) { console.error(err); }
+    };
+
+    const handleEditRecord = (r: MaintenanceRecord) => {
+        setMaintForm({
+            type: r.type,
+            title: r.title || '',
+            description: r.description || '',
+            date: r.date ? r.date.slice(0, 10) : '',
+            mileage: r.mileage,
+            cost: r.cost,
+            fuelAmount: r.fuel_amount || 0,
+            fuelPricePerLiter: r.fuel_price_per_liter || 0,
+            fuelType: r.fuel_type || 'Super E5',
+            intervalDays: r.interval_days || '',
+            intervalKm: r.interval_km || '',
+            intervalEngineHours: r.interval_engine_hours || ''
+        });
+        setEditingRecordId(r.id);
+        setShowMaintForm(true);
     };
 
     const handleDeleteRecord = async (recordId: number) => {
@@ -129,8 +160,11 @@ export default function VehicleDetailPage() {
         } catch (err) { console.error(err); }
     };
 
-    const handleDeleteVehicle = async () => {
-        if (!confirm('Fahrzeug wirklich endgültig löschen?')) return;
+    const handleDeleteVehicle = () => {
+        setShowDeleteVehicleModal(true);
+    };
+
+    const confirmDeleteVehicle = async () => {
         try {
             await api.vehicles.delete(vehicleId);
             navigate('/');
@@ -333,7 +367,9 @@ export default function VehicleDetailPage() {
 
                     {showMaintForm && (
                         <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-                            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>Neuer Wartungseintrag</h3>
+                            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>
+                                {editingRecordId ? 'Eintrag bearbeiten' : 'Neuer Wartungseintrag'}
+                            </h3>
                             <div className="grid grid-2">
                                 <div className="form-group">
                                     <label className="form-label">Typ</label>
@@ -406,7 +442,7 @@ export default function VehicleDetailPage() {
                             </div>
 
                             <div className="modal-actions">
-                                <button className="btn btn-secondary" onClick={() => setShowMaintForm(false)}>Abbrechen</button>
+                                <button className="btn btn-secondary" onClick={() => { setShowMaintForm(false); setEditingRecordId(null); }}>Abbrechen</button>
                                 <button className="btn btn-primary" onClick={handleAddMaintenance}>Speichern</button>
                             </div>
                         </div>
@@ -429,9 +465,14 @@ export default function VehicleDetailPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeleteRecord(r.id)}>
-                                            <Trash2 size={14} />
-                                        </button>
+                                        <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                                            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleEditRecord(r)}>
+                                                <Edit3 size={14} />
+                                            </button>
+                                            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeleteRecord(r.id)}>
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -458,7 +499,14 @@ export default function VehicleDetailPage() {
                                                 {MaintenanceTypeLabels[r.type]}
                                             </span>
                                         </div>
-                                        <span className="history-date">{r.date && new Date(r.date).toLocaleDateString('de-DE')}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                                            <span className="history-date">{r.date && new Date(r.date).toLocaleDateString('de-DE')}</span>
+                                            <div onClick={(e) => { e.stopPropagation(); }}>
+                                                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => { setActiveTab('wartung'); handleEditRecord(r); }}>
+                                                    <Edit3 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     {expandedRecords.has(r.id) && (
                                         <div className="history-details">
@@ -467,8 +515,6 @@ export default function VehicleDetailPage() {
                                                 <span>KM-Stand:</span><span>{r.mileage.toLocaleString('de-DE')} km</span>
                                                 {r.cost > 0 && <><span>Kosten:</span><span>{r.cost.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></>}
                                                 {r.description && <><span>Beschreibung:</span><span>{r.description}</span></>}
-                                                {r.fuel_amount && <><span>Liter:</span><span>{r.fuel_amount}</span></>}
-                                                {r.fuel_type && <><span>Kraftstoff:</span><span>{r.fuel_type}</span></>}
                                             </div>
                                         </div>
                                     )}
@@ -584,6 +630,15 @@ export default function VehicleDetailPage() {
                     )}
                 </div>
             )}
+
+            <ConfirmationModal
+                isOpen={showDeleteVehicleModal}
+                onClose={() => setShowDeleteVehicleModal(false)}
+                onConfirm={confirmDeleteVehicle}
+                title="Fahrzeug löschen"
+                message={`Möchten Sie das Fahrzeug "${vehicle.brand} ${vehicle.model}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden. Alle zugehörigen Daten (Wartungseinträge, Bilder) werden ebenfalls gelöscht.`}
+                confirmPhrase={vehicle.license_plate}
+            />
         </div>
     );
 }

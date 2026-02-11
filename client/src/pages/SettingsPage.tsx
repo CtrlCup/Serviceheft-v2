@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import config from '../config';
 import { Bell, BellOff, Save, Fingerprint, Trash2, Plus, User, Lock, Camera, X } from 'lucide-react';
+import Modal from '../components/Modal';
 
 export default function SettingsPage() {
     const { user, refreshUser } = useAuth();
@@ -12,14 +13,15 @@ export default function SettingsPage() {
     // Profile editing
     const [editUsername, setEditUsername] = useState('');
     const [editEmail, setEditEmail] = useState('');
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [profileMsg, setProfileMsg] = useState('');
     const [profileError, setProfileError] = useState('');
     const [savingProfile, setSavingProfile] = useState(false);
 
-    // Password change messages (separate from profile)
+    // Password change
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [pwMsg, setPwMsg] = useState('');
     const [pwError, setPwError] = useState('');
     const [savingPw, setSavingPw] = useState(false);
@@ -139,6 +141,10 @@ export default function SettingsPage() {
             setNewPassword('');
             setConfirmPassword('');
             setPwMsg('Passwort erfolgreich geändert');
+            setTimeout(() => {
+                setShowPasswordModal(false);
+                setPwMsg('');
+            }, 1000);
         } catch (err: any) {
             setPwError(err.message || 'Fehler beim Ändern');
         } finally {
@@ -211,6 +217,12 @@ export default function SettingsPage() {
             setPasskeyMsg('Passkey gelöscht');
         } catch (err: any) {
             setPasskeyError(err.message || 'Fehler beim Löschen');
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+        if (e.key === 'Enter') {
+            action();
         }
     };
 
@@ -342,6 +354,7 @@ export default function SettingsPage() {
                                 type="text"
                                 value={editUsername}
                                 onChange={e => setEditUsername(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handleProfileSave)}
                             />
                         </div>
 
@@ -353,6 +366,7 @@ export default function SettingsPage() {
                                 type="email"
                                 value={editEmail}
                                 onChange={e => setEditEmail(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handleProfileSave)}
                             />
                         </div>
 
@@ -382,11 +396,29 @@ export default function SettingsPage() {
                 {/* ═══ RIGHT COLUMN ═══ */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
                     {/* ─── Password Change ───────────────── */}
-                    <div className="card">
-                        <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: 'var(--space-lg)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                            <Lock size={18} style={{ color: 'var(--primary)' }} />
+                    <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                                <Lock size={18} style={{ color: 'var(--primary)' }} />
+                                Passwort
+                            </h3>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                                Ändern Sie Ihr Passwort regelmäßig.
+                            </p>
+                        </div>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setShowPasswordModal(true)}
+                        >
                             Passwort ändern
-                        </h3>
+                        </button>
+                    </div>
+
+                    <Modal
+                        isOpen={showPasswordModal}
+                        onClose={() => setShowPasswordModal(false)}
+                        title="Passwort ändern"
+                    >
                         <div className="form-group">
                             <label className="form-label" htmlFor="current-pw">Aktuelles Passwort</label>
                             <input
@@ -395,7 +427,9 @@ export default function SettingsPage() {
                                 type="password"
                                 value={currentPassword}
                                 onChange={e => setCurrentPassword(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handlePasswordChange)}
                                 autoComplete="current-password"
+                                autoFocus
                             />
                         </div>
                         <div className="form-group">
@@ -406,6 +440,7 @@ export default function SettingsPage() {
                                 type="password"
                                 value={newPassword}
                                 onChange={e => setNewPassword(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handlePasswordChange)}
                                 autoComplete="new-password"
                             />
                         </div>
@@ -417,6 +452,7 @@ export default function SettingsPage() {
                                 type="password"
                                 value={confirmPassword}
                                 onChange={e => setConfirmPassword(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handlePasswordChange)}
                                 autoComplete="new-password"
                             />
                         </div>
@@ -424,15 +460,20 @@ export default function SettingsPage() {
                         {pwMsg && <div className="status-badge badge-success" style={{ marginBottom: 'var(--space-md)', padding: 'var(--space-sm) var(--space-md)' }}>{pwMsg}</div>}
                         {pwError && <div className="login-error" style={{ marginBottom: 'var(--space-md)' }}>{pwError}</div>}
 
-                        <button
-                            className="btn btn-primary"
-                            onClick={handlePasswordChange}
-                            disabled={savingPw}
-                        >
-                            <Save size={16} />
-                            {savingPw ? 'Speichern...' : 'Passwort ändern'}
-                        </button>
-                    </div>
+                        <div className="modal-actions" style={{ marginTop: 'var(--space-lg)' }}>
+                            <button className="btn btn-secondary" onClick={() => setShowPasswordModal(false)}>
+                                Abbrechen
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handlePasswordChange}
+                                disabled={savingPw}
+                            >
+                                <Save size={16} />
+                                {savingPw ? 'Speichern...' : 'Speichern'}
+                            </button>
+                        </div>
+                    </Modal>
 
                     {/* ─── Passkey Management ────────────── */}
                     <div className="card">

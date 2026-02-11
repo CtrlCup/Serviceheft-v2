@@ -183,7 +183,7 @@ router.post('/smtp/test', (req: AuthRequest, res: Response): void => {
     });
 
     transporter.sendMail({
-        from: config.smtp.from,
+        from: config.smtp.name ? `"${config.smtp.name}" <${config.smtp.from}>` : config.smtp.from,
         to,
         subject: 'Test-Mail – Digitales Serviceheft',
         html: `

@@ -1,38 +1,15 @@
 services:
-  # ─── MariaDB ─────────────────────────────────────
-  db:
-    image: mariadb:11
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
-      MYSQL_DATABASE: ${DB_DATABASE:-serviceheft}
-      MYSQL_USER: ${DB_USER:-serviceheft}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-serviceheft}
-    volumes:
-      - db_data:/var/lib/mysql
-    ports:
-      - "${DB_EXTERNAL_PORT:-3306}:3306"
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # ─── Serviceheft App ─────────────────────────────
   app:
     build: .
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "${APP_PORT:-3001}:3001"
       - "${UDP_PORT:-41234}:41234/udp"
     volumes:
       - ./uploads:/app/server/uploads
+      - ./data:/app/server/data
       - ./config.json:/app/config.json
     environment:
       NODE_ENV: production
 
-volumes:
-  db_data:

@@ -21,8 +21,8 @@ Ein digitales Fahrzeug-Serviceheft zur Verwaltung von Wartungen, Reparaturen, Ta
 ### 1. Repository klonen
 
 ```bash
-git clone https://github.com/dein-user/serviceheft.git
-cd serviceheft
+git clone https://github.com/CtrlCup/Serviceheft-v2.git
+cd Serviceheft-v2
 ```
 
 ### 2. Konfigurationsdateien erstellen

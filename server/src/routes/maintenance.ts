@@ -17,6 +17,28 @@ router.get('/:vehicleId/maintenance', (req: AuthRequest, res: Response): void =>
     res.json({ success: true, data: records });
 });
 
+const recalculateVehicleStats = (db: any, vehicleId: number | string) => {
+    const stats = db.prepare(`
+        SELECT 
+            MAX(mileage) as max_mileage,
+            SUM(cost) as total_cost
+        FROM maintenance_records 
+        WHERE vehicle_id = ?
+    `).get(vehicleId) as { max_mileage: number; total_cost: number };
+
+    db.prepare(`
+        UPDATE vehicles 
+        SET 
+            mileage = MAX(mileage, ?),
+            total_expenses = ?
+        WHERE id = ?
+    `).run(stats.max_mileage || 0, stats.total_cost || 0, vehicleId);
+};
+
+export default router;
+
+// ─── Apply to Routes ───
+
 /** POST /api/vehicles/:vehicleId/maintenance – Create record */
 router.post('/:vehicleId/maintenance', (req: AuthRequest, res: Response): void => {
     const db = getDb();
@@ -44,15 +66,7 @@ router.post('/:vehicleId/maintenance', (req: AuthRequest, res: Response): void =
         intervalDays ?? null, intervalKm ?? null, intervalEngineHours ?? null
     );
 
-    // Update vehicle mileage if the new record has a higher value
-    if (mileage > 0) {
-        db.prepare('UPDATE vehicles SET mileage = MAX(mileage, ?) WHERE id = ?').run(mileage, req.params.vehicleId);
-    }
-
-    // Update total expenses
-    if (cost > 0) {
-        db.prepare('UPDATE vehicles SET total_expenses = total_expenses + ? WHERE id = ?').run(cost, req.params.vehicleId);
-    }
+    recalculateVehicleStats(db, Number(req.params.vehicleId));
 
     const record = db.prepare('SELECT * FROM maintenance_records WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, data: record });
@@ -87,6 +101,7 @@ router.put('/:vehicleId/maintenance/:id', (req: AuthRequest, res: Response): voi
     if (updates.length > 0) {
         values.push(req.params.id);
         db.prepare(`UPDATE maintenance_records SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+        recalculateVehicleStats(db, Number(req.params.vehicleId));
     }
 
     const updated = db.prepare('SELECT * FROM maintenance_records WHERE id = ?').get(req.params.id);
@@ -103,7 +118,7 @@ router.delete('/:vehicleId/maintenance/:id', (req: AuthRequest, res: Response): 
     if (!record) { res.status(404).json({ success: false, error: 'Record not found' }); return; }
 
     db.prepare('DELETE FROM maintenance_records WHERE id = ?').run(req.params.id);
+    recalculateVehicleStats(db, Number(req.params.vehicleId));
+
     res.json({ success: true });
 });
-
-export default router;

@@ -31,7 +31,7 @@ router.post('/login', (req: AuthRequest, res: Response): void => {
     }
 
     const db = getDb();
-    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+    const user = db.prepare('SELECT * FROM users WHERE lower(username) = lower(?)').get(username) as any;
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
         res.status(401).json({ success: false, error: 'Invalid credentials' });
         return;
@@ -66,7 +66,7 @@ router.post('/register', (req: AuthRequest, res: Response): void => {
         return;
     }
 
-    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    const existing = db.prepare('SELECT id FROM users WHERE lower(username) = lower(?)').get(username);
     if (existing) {
         res.status(409).json({ success: false, error: 'Benutzername bereits vergeben' });
         return;
@@ -246,7 +246,7 @@ router.post('/forgot-password', (req: Request, res: Response): void => {
     });
 
     transporter.sendMail({
-        from: config.smtp.from,
+        from: config.smtp.name ? `"${config.smtp.name}" <${config.smtp.from}>` : config.smtp.from,
         to: email,
         subject: 'Passwort zurücksetzen – Digitales Serviceheft',
         html: `

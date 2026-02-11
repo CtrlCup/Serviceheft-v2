@@ -103,6 +103,9 @@ export function runMigrations(): void {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_reset_token ON password_reset_tokens(token);
+
+    -- Case-insensitive unique constraint for username
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(lower(username));
   `);
 
   // ─── Incremental migrations for existing databases ────

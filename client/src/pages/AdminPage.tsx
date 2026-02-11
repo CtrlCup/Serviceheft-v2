@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
     Users, Mail, Database, Plus, Trash2, Edit3, Save, X, UserPlus, Settings, AlertTriangle,
-    KeyRound, ShieldAlert, ShieldCheck, Send, Copy, Check
+    KeyRound, ShieldAlert, ShieldCheck, Send, Copy, Check, Eye, EyeOff
 } from 'lucide-react';
 import './AdminPage.css';
 
@@ -346,17 +346,41 @@ export default function AdminPage() {
                                     { label: 'Host', key: 'host' },
                                     { label: 'Port', key: 'port', type: 'number' },
                                     { label: 'Benutzer', key: 'user' },
-                                    { label: 'Passwort', key: 'password', type: 'password' },
+                                    { label: 'Passwort', key: 'password', type: 'password-toggle' },
                                     { label: 'Absender-Adresse', key: 'from' },
+                                    { label: 'Anzeigename (Optional)', key: 'name' },
+                                    { label: 'Profilbild URL (Optional)', key: 'picture' },
                                 ].map(f => (
                                     <div className="form-group" key={f.key}>
                                         <label className="form-label">{f.label}</label>
-                                        <input
-                                            className="form-input"
-                                            type={f.type || 'text'}
-                                            value={smtpForm[f.key] ?? ''}
-                                            onChange={e => setSmtpForm((s: any) => ({ ...s, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))}
-                                        />
+                                        {f.type === 'password-toggle' ? (
+                                            <div style={{ position: 'relative' }}>
+                                                <input
+                                                    className="form-input"
+                                                    type={smtpForm.showPassword ? 'text' : 'password'}
+                                                    value={smtpForm[f.key] ?? ''}
+                                                    onChange={e => setSmtpForm((s: any) => ({ ...s, [f.key]: e.target.value }))}
+                                                    style={{ paddingRight: '40px' }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    style={{
+                                                        position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                                                        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)'
+                                                    }}
+                                                    onClick={() => setSmtpForm((s: any) => ({ ...s, showPassword: !s.showPassword }))}
+                                                >
+                                                    {smtpForm.showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <input
+                                                className="form-input"
+                                                type={f.type || 'text'}
+                                                value={smtpForm[f.key] ?? ''}
+                                                onChange={e => setSmtpForm((s: any) => ({ ...s, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))}
+                                            />
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -365,8 +389,23 @@ export default function AdminPage() {
                                 <span>Host:</span><span>{smtp.host || '–'}</span>
                                 <span>Port:</span><span>{smtp.port || '–'}</span>
                                 <span>Benutzer:</span><span>{smtp.user || '–'}</span>
-                                <span>Passwort:</span><span>{smtp.password || '–'}</span>
+                                <span>Passwort:</span>
+                                <span style={{ fontFamily: 'monospace' }}>
+                                    {smtp.password ? '••••••' : '–'}
+                                </span>
                                 <span>Absender:</span><span>{smtp.from || '–'}</span>
+                                <span>Anzeigename:</span><span>{smtp.name || '–'}</span>
+                                <span>Profilbild:</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                                    {smtp.picture ? (
+                                        <>
+                                            <img src={smtp.picture} alt="Preview" style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover' }} />
+                                            <span style={{ fontSize: '0.75rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {smtp.picture}
+                                            </span>
+                                        </>
+                                    ) : '–'}
+                                </span>
                             </div>
                         )}
                     </div>
