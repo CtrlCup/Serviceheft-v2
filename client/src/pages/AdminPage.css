@@ -1,0 +1,24 @@
+/* ═══════════════════════════════════════════════════
+   Admin Page Styles
+   ═══════════════════════════════════════════════════ */
+
+.config-section {
+    padding-bottom: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border);
+}
+
+.config-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.config-section-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: var(--space-md);
+}

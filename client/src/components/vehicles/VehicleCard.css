@@ -1,0 +1,98 @@
+/* ═══════════════════════════════════════════════════
+   Vehicle Card Styles
+   ═══════════════════════════════════════════════════ */
+
+.vehicle-card {
+    cursor: pointer;
+    overflow: hidden;
+    padding: 0;
+}
+
+.vehicle-card-image {
+    position: relative;
+    height: 180px;
+    background: var(--bg-elevated);
+    overflow: hidden;
+}
+
+.vehicle-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-slow);
+}
+
+.vehicle-card:hover .vehicle-card-image img {
+    transform: scale(1.05);
+}
+
+.vehicle-card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background: linear-gradient(135deg, var(--bg-elevated), var(--bg-hover));
+}
+
+.vehicle-status-badge {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-full);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    color: var(--text-primary);
+}
+
+.vehicle-card-body {
+    padding: var(--space-md) var(--space-lg) var(--space-lg);
+}
+
+.vehicle-card-plate {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-family: var(--font-mono), monospace;
+}
+
+.vehicle-card-name {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-top: 0.125rem;
+}
+
+.vehicle-card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+}
+
+.vehicle-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-base);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+.vehicle-stat.warning {
+    color: var(--warning);
+    background: var(--warning-bg);
+}
+
+.vehicle-stat.danger {
+    color: var(--danger);
+    background: var(--danger-bg);
+}

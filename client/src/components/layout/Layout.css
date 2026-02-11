@@ -1,0 +1,207 @@
+/* ═══════════════════════════════════════════════════
+   Layout & Sidebar Styles
+   ═══════════════════════════════════════════════════ */
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.app-main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    transition: margin-left var(--transition-base);
+}
+
+.app-content {
+    padding: var(--space-xl) var(--space-xl);
+    max-width: var(--content-max);
+    margin: 0 auto;
+}
+
+/* ─── Sidebar ────────────────────────────────────── */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    transition: transform var(--transition-base);
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.sidebar-logo svg {
+    color: var(--primary);
+}
+
+.sidebar-close {
+    display: none;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    overflow-y: auto;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0.625rem var(--space-md);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.sidebar-link:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.sidebar-link.active {
+    background: var(--primary-subtle);
+    color: var(--primary-light);
+}
+
+.sidebar-link.active svg {
+    color: var(--primary);
+}
+
+.sidebar-footer {
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.sidebar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.sidebar-user-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sidebar-username {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-role {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: var(--space-md);
+    left: var(--space-md);
+    z-index: 90;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+}
+
+.sidebar-overlay {
+    display: none;
+}
+
+/* ─── Mobile ─────────────────────────────────────── */
+@media (max-width: 768px) {
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    .sidebar-close {
+        display: flex;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--transition-base);
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .app-main {
+        margin-left: 0;
+        padding-top: 60px;
+    }
+
+    .app-content {
+        padding: var(--space-md);
+    }
+}

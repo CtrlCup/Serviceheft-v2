@@ -1,0 +1,227 @@
+/* ═══════════════════════════════════════════════════
+   Vehicle Detail Page Styles
+   ═══════════════════════════════════════════════════ */
+
+/* ─── Vehicle Image Hero ─────────────────────────── */
+.vehicle-detail-hero {
+    margin-bottom: var(--space-md);
+}
+
+.vehicle-detail-hero-image {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--bg-elevated);
+}
+
+.vehicle-detail-hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vehicle-detail-hero-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.vehicle-detail-hero-image:hover .vehicle-detail-hero-overlay {
+    opacity: 1;
+}
+
+.detail-section {
+    animation: fadeIn 0.3s ease;
+}
+
+.detail-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+}
+
+/* ─── History ────────────────────────────────────── */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.history-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color var(--transition-fast);
+}
+
+.history-item:hover {
+    border-color: var(--border-hover);
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem var(--space-md);
+    cursor: pointer;
+    user-select: none;
+}
+
+.history-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.history-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.history-details {
+    padding: 0 var(--space-md) var(--space-md);
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-md);
+    animation: fadeIn 0.2s ease;
+}
+
+.history-detail-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-xs) var(--space-md);
+    font-size: 0.8125rem;
+}
+
+.history-detail-grid span:nth-child(odd) {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ─── Calendar ───────────────────────────────────── */
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-lg);
+}
+
+.calendar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-dayname {
+    padding: var(--space-sm);
+    text-align: center;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.calendar-cell {
+    aspect-ratio: 1;
+    padding: 0.375rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    min-height: 48px;
+    transition: all var(--transition-fast);
+}
+
+.calendar-cell.empty {
+    background: transparent;
+    border-color: transparent;
+}
+
+.calendar-cell.today {
+    border-color: var(--primary);
+    background: var(--primary-subtle);
+}
+
+.calendar-cell.has-event {
+    border-color: var(--info);
+}
+
+.calendar-day {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.calendar-events {
+    display: flex;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+.calendar-event-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ─── Fuel Bar ───────────────────────────────────── */
+.fuel-bar-wrap {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-base);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: var(--space-sm);
+}
+
+.fuel-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--warning), var(--success));
+    border-radius: var(--radius-full);
+    transition: width var(--transition-base);
+    min-width: 4px;
+}
+
+/* ─── Responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+    .vehicle-detail-hero-image {
+        height: 160px;
+    }
+
+    .vehicle-detail-hero-overlay {
+        opacity: 1;
+    }
+
+    .calendar-cell {
+        min-height: 36px;
+        padding: 0.25rem;
+    }
+
+    .calendar-day {
+        font-size: 0.625rem;
+    }
+
+    .calendar-event-dot {
+        width: 4px;
+        height: 4px;
+    }
+}

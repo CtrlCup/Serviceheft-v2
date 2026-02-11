@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Car body -->
+  <path d="M6 20.5c0-.5.2-1 .6-1.3L9 17.5l2-4c.3-.6.9-1 1.6-1h6.8c.7 0 1.3.4 1.6 1l2 4 2.4 1.7c.4.3.6.8.6 1.3V22c0 .6-.4 1-1 1h-1c0 1.1-.9 2-2 2s-2-.9-2-2h-8c0 1.1-.9 2-2 2s-2-.9-2-2H7c-.6 0-1-.4-1-1v-1.5z" fill="rgba(255,255,255,0.95)"/>
+  <!-- Windows -->
+  <path d="M11.5 14.5l-1.2 2.5h4.2v-3.5h-1.8c-.5 0-1 .3-1.2.8v.2zm5.5-1v3.5h4.2l-1.2-2.5c-.2-.5-.7-.8-1.2-.8v-.2H17z" fill="#3B82F6"/>
+  <!-- Wrench -->
+  <path d="M22 7.5l-2 2 1.5 1.5 2-2c.5.8.5 1.8-.1 2.4-.8.8-2 .8-2.8 0l-4.5 4.5c-.3.3-.8.3-1.1 0s-.3-.8 0-1.1l4.5-4.5c-.8-.8-.8-2 0-2.8.6-.6 1.6-.6 2.5-.1z" fill="rgba(255,255,255,0.6)" stroke="rgba(255,255,255,0.8)" stroke-width="0.5"/>
+</svg>

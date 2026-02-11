@@ -1,0 +1,54 @@
+{
+    "appName": "Digitales Serviceheft",
+    "database": {
+        "type": "mariadb",
+        "sqlite": {
+            "path": "./data/serviceheft.db"
+        },
+        "mysql": {
+            "host": "db",
+            "port": 3306,
+            "user": "serviceheft",
+            "password": "CHANGE_ME",
+            "database": "serviceheft"
+        },
+        "postgresql": {
+            "host": "localhost",
+            "port": 5432,
+            "user": "",
+            "password": "",
+            "database": "serviceheft"
+        }
+    },
+    "smtp": {
+        "host": "",
+        "port": 587,
+        "secure": false,
+        "user": "",
+        "password": "",
+        "from": ""
+    },
+    "udp": {
+        "port": 41234,
+        "enabled": true
+    },
+    "auth": {
+        "jwtSecret": "CHANGE-ME-use-a-random-string-with-at-least-32-characters",
+        "tokenExpiry": "7d",
+        "authelia": {
+            "enabled": false,
+            "url": ""
+        },
+        "authentik": {
+            "enabled": false,
+            "issuer": "",
+            "clientId": "",
+            "clientSecret": "",
+            "redirectUri": ""
+        }
+    },
+    "server": {
+        "port": 3001,
+        "host": "0.0.0.0"
+    }
+}

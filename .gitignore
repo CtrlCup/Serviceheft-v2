@@ -1,0 +1,30 @@
+# ═══════════════════════════════════════════════════
+# Digitales Serviceheft – .gitignore
+# ═══════════════════════════════════════════════════
+
+# ─── Dependencies ─────────────────────────────────
+node_modules/
+
+# ─── Build Output ─────────────────────────────────
+dist/
+server/dist/
+client/dist/
+
+# ─── Sensible Daten ───────────────────────────────
+.env
+config.json
+
+# ─── Datenbank ────────────────────────────────────
+server/data/
+*.db
+*.db-shm
+*.db-wal
+
+# ─── Uploads (Benutzerbilder) ─────────────────────
+server/uploads/
+uploads/
+
+# ─── System ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
