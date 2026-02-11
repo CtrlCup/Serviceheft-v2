@@ -10,6 +10,7 @@ interface AuthContextType {
     logout: () => void;
     isAuthenticated: boolean;
     isAdmin: boolean;
+    mustChangePassword: boolean;
     refreshUser: () => Promise<void>;
 }
 
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 logout,
                 isAuthenticated: !!user,
                 isAdmin: user?.role === 'admin',
+                mustChangePassword: !!user?.mustChangePassword,
                 refreshUser,
             }}
         >

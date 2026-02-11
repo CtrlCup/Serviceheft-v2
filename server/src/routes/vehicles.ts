@@ -3,9 +3,11 @@ import crypto from 'crypto';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { getDb } from '../database/connection.js';
 import { AuthRequest } from '../middleware/auth.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
 
 // ─── Multer Upload Config ─────────────────────────

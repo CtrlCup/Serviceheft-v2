@@ -114,6 +114,14 @@ export function runMigrations(): void {
     // Column already exists – ignore
   }
 
+  // Add must_change_password column
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0');
+    console.log('  ✓ Migration: added must_change_password column to users');
+  } catch (_e) {
+    // Column already exists – ignore
+  }
+
   // Seed default app settings
   const settingsCount = db.prepare('SELECT COUNT(*) as count FROM app_settings').get() as { count: number };
   if (settingsCount.count === 0) {
@@ -125,8 +133,8 @@ export function runMigrations(): void {
   if (userCount.count === 0) {
     const hash = bcrypt.hashSync('admin123', 10);
     db.prepare(`
-      INSERT INTO users (username, email, password_hash, role)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO users (username, email, password_hash, role, must_change_password)
+      VALUES (?, ?, ?, ?, 1)
     `).run('admin', 'admin@example.com', hash, 'admin');
     console.log('  ✓ Default admin user created (admin / admin123)');
   }

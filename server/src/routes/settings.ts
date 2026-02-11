@@ -63,22 +63,25 @@ router.put('/profile', (req: AuthRequest, res: Response): void => {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId!) as any;
     if (!user) { res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' }); return; }
 
-    // If changing password, verify current password
+    // If changing password, verify current password (skip check if forced change)
     if (newPassword) {
-        if (!currentPassword) {
-            res.status(400).json({ success: false, error: 'Aktuelles Passwort erforderlich' });
-            return;
-        }
-        if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
-            res.status(401).json({ success: false, error: 'Aktuelles Passwort ist falsch' });
-            return;
+        const mustChange = !!user.must_change_password;
+        if (!mustChange) {
+            if (!currentPassword) {
+                res.status(400).json({ success: false, error: 'Aktuelles Passwort erforderlich' });
+                return;
+            }
+            if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+                res.status(401).json({ success: false, error: 'Aktuelles Passwort ist falsch' });
+                return;
+            }
         }
         if (newPassword.length < 6) {
             res.status(400).json({ success: false, error: 'Neues Passwort muss mindestens 6 Zeichen lang sein' });
             return;
         }
         const hash = bcrypt.hashSync(newPassword, 10);
-        db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.userId!);
+        db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?').run(hash, req.userId!);
     }
 
     // Update username if provided and different

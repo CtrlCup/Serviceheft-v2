@@ -9,6 +9,7 @@ export interface User {
     role: 'admin' | 'user';
     notificationsEnabled: boolean;
     avatar: string;
+    mustChangePassword?: boolean;
 }
 
 export interface Vehicle {

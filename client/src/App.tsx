@@ -4,13 +4,14 @@ import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ForcePasswordChangePage from './pages/ForcePasswordChangePage';
 import DashboardPage from './pages/DashboardPage';
 import VehicleDetailPage from './pages/VehicleDetailPage';
 import AdminPage from './pages/AdminPage';
 import SettingsPage from './pages/SettingsPage';
 
 function AppRoutes() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, mustChangePassword } = useAuth();
 
   if (loading) {
     return (
@@ -20,10 +21,21 @@ function AppRoutes() {
     );
   }
 
+  // Force password change: redirect all routes to /change-password
+  if (isAuthenticated && mustChangePassword) {
+    return (
+      <Routes>
+        <Route path="/change-password" element={<ForcePasswordChangePage />} />
+        <Route path="*" element={<Navigate to="/change-password" replace />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/" replace /> : <ResetPasswordPage />} />
+      <Route path="/change-password" element={<Navigate to="/" replace />} />
 
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/" element={<DashboardPage />} />

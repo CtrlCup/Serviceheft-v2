@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
-    Users, Mail, Database, Plus, Trash2, Edit3, Save, X, UserPlus, Settings, AlertTriangle
+    Users, Mail, Database, Plus, Trash2, Edit3, Save, X, UserPlus, Settings, AlertTriangle,
+    KeyRound, ShieldAlert, ShieldCheck, Send, Copy, Check
 } from 'lucide-react';
 import './AdminPage.css';
 
@@ -27,6 +28,15 @@ export default function AdminPage() {
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [resetInput, setResetInput] = useState('');
     const [resetting, setResetting] = useState(false);
+
+    // Test email state
+    const [testEmailTo, setTestEmailTo] = useState('');
+    const [testEmailMsg, setTestEmailMsg] = useState('');
+    const [testEmailLoading, setTestEmailLoading] = useState(false);
+
+    // Password reset popup state
+    const [resetPasswordPopup, setResetPasswordPopup] = useState<{ username: string; password: string } | null>(null);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         api.admin.getUsers().then(setUsers).catch(console.error);
@@ -61,12 +71,49 @@ export default function AdminPage() {
         } catch (err) { console.error(err); }
     };
 
+    const handleToggleForceChange = async (id: number, currentValue: boolean) => {
+        try {
+            await api.admin.toggleForcePasswordChange(id, !currentValue);
+            setUsers(users.map(u => u.id === id ? { ...u, must_change_password: !currentValue ? 1 : 0 } : u));
+        } catch (err) { console.error(err); }
+    };
+
+    const handleResetPassword = async (user: any) => {
+        if (!confirm(`Passwort für "${user.username}" wirklich zurücksetzen?`)) return;
+        try {
+            const result = await api.admin.resetUserPassword(user.id);
+            // Update the user in the list (must_change_password is now set)
+            setUsers(users.map(u => u.id === user.id ? { ...u, must_change_password: 1 } : u));
+
+            if (result.sent) {
+                alert(`Neues Passwort wurde per E-Mail an ${user.email} gesendet.`);
+            } else if (result.temporaryPassword) {
+                setResetPasswordPopup({ username: user.username, password: result.temporaryPassword });
+                setCopied(false);
+            }
+        } catch (err) { console.error(err); }
+    };
+
     const handleSaveSmtp = async () => {
         try {
             const updated = await api.admin.updateSmtp(smtpForm);
             setSmtp(updated);
             setEditingSmtp(false);
         } catch (err) { console.error(err); }
+    };
+
+    const handleSendTestEmail = async () => {
+        if (!testEmailTo) return;
+        setTestEmailLoading(true);
+        setTestEmailMsg('');
+        try {
+            const result = await api.admin.sendTestEmail(testEmailTo);
+            setTestEmailMsg(`✅ ${result.message}`);
+        } catch (err: any) {
+            setTestEmailMsg(`❌ ${err.message || 'Versand fehlgeschlagen'}`);
+        } finally {
+            setTestEmailLoading(false);
+        }
     };
 
     const handleSaveConfig = async () => {
@@ -92,6 +139,13 @@ export default function AdminPage() {
         }
     };
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
     const tabs = [
         { id: 'users', label: 'Benutzer', icon: <Users size={16} /> },
         { id: 'smtp', label: 'SMTP', icon: <Mail size={16} /> },
@@ -115,6 +169,57 @@ export default function AdminPage() {
                     </button>
                 ))}
             </div>
+
+            {/* ─── Password Reset Popup (Modal) ──── */}
+            {resetPasswordPopup && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 9999,
+                }}>
+                    <div className="card" style={{ maxWidth: 420, width: '100%', padding: 'var(--space-xl)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+                            <KeyRound size={20} style={{ color: 'var(--warning)' }} />
+                            <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Temporäres Passwort</h3>
+                        </div>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 'var(--space-md)' }}>
+                            Neues Passwort für <strong>{resetPasswordPopup.username}</strong>:
+                        </p>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
+                            background: 'var(--bg-base)', padding: 'var(--space-sm) var(--space-md)',
+                            borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-lg)',
+                        }}>
+                            <code style={{
+                                flex: 1, fontSize: '1.125rem', letterSpacing: '2px',
+                                fontFamily: 'var(--font-mono, monospace)', fontWeight: 600,
+                                color: 'var(--text-primary)',
+                            }}>
+                                {resetPasswordPopup.password}
+                            </code>
+                            <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => copyToClipboard(resetPasswordPopup.password)}
+                                style={{ flexShrink: 0 }}
+                            >
+                                {copied ? <Check size={14} /> : <Copy size={14} />}
+                                {copied ? 'Kopiert' : 'Kopieren'}
+                            </button>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
+                            Der Benutzer muss das Passwort beim nächsten Login ändern.
+                            Dieses Passwort wird nur einmalig angezeigt.
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            style={{ width: '100%' }}
+                            onClick={() => setResetPasswordPopup(null)}
+                        >
+                            Schließen
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* ─── Users Tab ──────────────── */}
             {activeTab === 'users' && (
@@ -164,7 +269,7 @@ export default function AdminPage() {
                                     <th>Benutzername</th>
                                     <th>E-Mail</th>
                                     <th>Rolle</th>
-                                    <th>Benachrichtigungen</th>
+                                    <th>PW ändern</th>
                                     <th>Aktionen</th>
                                 </tr>
                             </thead>
@@ -179,11 +284,35 @@ export default function AdminPage() {
                                                 {u.role === 'admin' ? 'Admin' : 'Benutzer'}
                                             </span>
                                         </td>
-                                        <td>{u.notifications_enabled ? '✓ An' : '✗ Aus'}</td>
                                         <td>
-                                            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeleteUser(u.id)}>
-                                                <Trash2 size={14} />
+                                            <button
+                                                className={`btn btn-ghost btn-sm`}
+                                                onClick={() => handleToggleForceChange(u.id, !!u.must_change_password)}
+                                                title={u.must_change_password ? 'Passwortänderung erzwungen – Klicken zum Aufheben' : 'Klicken um Passwortänderung zu erzwingen'}
+                                                style={{
+                                                    color: u.must_change_password ? 'var(--warning)' : 'var(--text-muted)',
+                                                    gap: '0.25rem',
+                                                }}
+                                            >
+                                                {u.must_change_password ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}
+                                                <span style={{ fontSize: '0.75rem' }}>
+                                                    {u.must_change_password ? 'Ja' : 'Nein'}
+                                                </span>
                                             </button>
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
+                                                <button
+                                                    className="btn btn-ghost btn-icon btn-sm"
+                                                    onClick={() => handleResetPassword(u)}
+                                                    title="Passwort zurücksetzen"
+                                                >
+                                                    <KeyRound size={14} />
+                                                </button>
+                                                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDeleteUser(u.id)} title="Benutzer löschen">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -195,50 +324,89 @@ export default function AdminPage() {
 
             {/* ─── SMTP Tab ──────────────── */}
             {activeTab === 'smtp' && (
-                <div className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-                        <h3 style={{ fontSize: '1rem' }}>SMTP-Konfiguration</h3>
-                        {!editingSmtp ? (
-                            <button className="btn btn-secondary btn-sm" onClick={() => { setSmtpForm(smtp); setEditingSmtp(true); }}>
-                                <Edit3 size={14} /> Bearbeiten
-                            </button>
+                <div>
+                    <div className="card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+                            <h3 style={{ fontSize: '1rem' }}>SMTP-Konfiguration</h3>
+                            {!editingSmtp ? (
+                                <button className="btn btn-secondary btn-sm" onClick={() => { setSmtpForm(smtp); setEditingSmtp(true); }}>
+                                    <Edit3 size={14} /> Bearbeiten
+                                </button>
+                            ) : (
+                                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setEditingSmtp(false)}><X size={14} /></button>
+                                    <button className="btn btn-primary btn-sm" onClick={handleSaveSmtp}><Save size={14} /> Speichern</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {editingSmtp ? (
+                            <div className="grid grid-2">
+                                {[
+                                    { label: 'Host', key: 'host' },
+                                    { label: 'Port', key: 'port', type: 'number' },
+                                    { label: 'Benutzer', key: 'user' },
+                                    { label: 'Passwort', key: 'password', type: 'password' },
+                                    { label: 'Absender-Adresse', key: 'from' },
+                                ].map(f => (
+                                    <div className="form-group" key={f.key}>
+                                        <label className="form-label">{f.label}</label>
+                                        <input
+                                            className="form-input"
+                                            type={f.type || 'text'}
+                                            value={smtpForm[f.key] ?? ''}
+                                            onChange={e => setSmtpForm((s: any) => ({ ...s, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         ) : (
-                            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                <button className="btn btn-secondary btn-sm" onClick={() => setEditingSmtp(false)}><X size={14} /></button>
-                                <button className="btn btn-primary btn-sm" onClick={handleSaveSmtp}><Save size={14} /> Speichern</button>
+                            <div className="history-detail-grid">
+                                <span>Host:</span><span>{smtp.host || '–'}</span>
+                                <span>Port:</span><span>{smtp.port || '–'}</span>
+                                <span>Benutzer:</span><span>{smtp.user || '–'}</span>
+                                <span>Passwort:</span><span>{smtp.password || '–'}</span>
+                                <span>Absender:</span><span>{smtp.from || '–'}</span>
                             </div>
                         )}
                     </div>
 
-                    {editingSmtp ? (
-                        <div className="grid grid-2">
-                            {[
-                                { label: 'Host', key: 'host' },
-                                { label: 'Port', key: 'port', type: 'number' },
-                                { label: 'Benutzer', key: 'user' },
-                                { label: 'Passwort', key: 'password', type: 'password' },
-                                { label: 'Absender-Adresse', key: 'from' },
-                            ].map(f => (
-                                <div className="form-group" key={f.key}>
-                                    <label className="form-label">{f.label}</label>
-                                    <input
-                                        className="form-input"
-                                        type={f.type || 'text'}
-                                        value={smtpForm[f.key] ?? ''}
-                                        onChange={e => setSmtpForm((s: any) => ({ ...s, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value }))}
-                                    />
-                                </div>
-                            ))}
+                    {/* Test Email Section */}
+                    <div className="card" style={{ marginTop: 'var(--space-lg)' }}>
+                        <h3 style={{ fontSize: '1rem', marginBottom: 'var(--space-md)' }}>
+                            <Send size={16} style={{ marginRight: 'var(--space-xs)', verticalAlign: 'middle' }} />
+                            Test-Mail senden
+                        </h3>
+                        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-end' }}>
+                            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                                <label className="form-label">Empfänger E-Mail</label>
+                                <input
+                                    className="form-input"
+                                    type="email"
+                                    value={testEmailTo}
+                                    onChange={e => setTestEmailTo(e.target.value)}
+                                    placeholder="test@beispiel.de"
+                                />
+                            </div>
+                            <button
+                                className="btn btn-primary btn-sm"
+                                onClick={handleSendTestEmail}
+                                disabled={testEmailLoading || !testEmailTo}
+                                style={{ height: 38, whiteSpace: 'nowrap' }}
+                            >
+                                <Send size={14} />
+                                {testEmailLoading ? 'Wird gesendet...' : 'Senden'}
+                            </button>
                         </div>
-                    ) : (
-                        <div className="history-detail-grid">
-                            <span>Host:</span><span>{smtp.host || '–'}</span>
-                            <span>Port:</span><span>{smtp.port || '–'}</span>
-                            <span>Benutzer:</span><span>{smtp.user || '–'}</span>
-                            <span>Passwort:</span><span>{smtp.password || '–'}</span>
-                            <span>Absender:</span><span>{smtp.from || '–'}</span>
-                        </div>
-                    )}
+                        {testEmailMsg && (
+                            <p style={{
+                                fontSize: '0.8125rem', marginTop: 'var(--space-sm)',
+                                color: testEmailMsg.startsWith('✅') ? 'var(--success)' : 'var(--danger)',
+                            }}>
+                                {testEmailMsg}
+                            </p>
+                        )}
+                    </div>
                 </div>
             )}
 

@@ -18,6 +18,7 @@ function formatUser(user: any) {
         role: user.role,
         notificationsEnabled: !!user.notifications_enabled,
         avatar: user.avatar || '',
+        mustChangePassword: !!user.must_change_password,
     };
 }
 
@@ -94,6 +95,7 @@ router.post('/register', (req: AuthRequest, res: Response): void => {
                 role: 'user',
                 notificationsEnabled: true,
                 avatar: '',
+                mustChangePassword: false,
             },
         },
     });
@@ -107,7 +109,7 @@ router.post('/logout', (_req: AuthRequest, res: Response): void => {
 /** GET /api/auth/me */
 router.get('/me', authMiddleware, (req: AuthRequest, res: Response): void => {
     const db = getDb();
-    const user = db.prepare('SELECT id, username, email, role, notifications_enabled, avatar FROM users WHERE id = ?').get(req.userId!) as any;
+    const user = db.prepare('SELECT id, username, email, role, notifications_enabled, avatar, must_change_password FROM users WHERE id = ?').get(req.userId!) as any;
     if (!user) {
         res.status(404).json({ success: false, error: 'User not found' });
         return;
@@ -115,11 +117,87 @@ router.get('/me', authMiddleware, (req: AuthRequest, res: Response): void => {
     res.json({ success: true, data: formatUser(user) });
 });
 
-/** GET /api/auth/registration-status – Public: check if registration is enabled */
+/** GET /api/auth/registration-status – Public: check registration + SSO config */
 router.get('/registration-status', (_req: Request, res: Response): void => {
     const db = getDb();
+    const config = getConfig();
     const setting = db.prepare("SELECT value FROM app_settings WHERE key = 'registration_enabled'").get() as any;
-    res.json({ success: true, data: { registrationEnabled: setting?.value === '1' } });
+    res.json({
+        success: true,
+        data: {
+            registrationEnabled: setting?.value === '1',
+            autheliaEnabled: config.auth.authelia?.enabled ?? false,
+            autheliaUrl: config.auth.authelia?.url ?? '',
+            authentikEnabled: config.auth.authentik?.enabled ?? false,
+            authentikIssuer: config.auth.authentik?.issuer ?? '',
+            authentikClientId: config.auth.authentik?.clientId ?? '',
+            authentikRedirectUri: config.auth.authentik?.redirectUri ?? '',
+        },
+    });
+});
+
+// ─── Passkey Authentication (simplified, matching the existing stub) ─────
+
+// In-memory challenge store (TTL 5 min)
+const passkeyChallengStore = new Map<string, { challenge: string; expires: number }>();
+
+/** POST /api/auth/passkey-challenge – Generate challenge for WebAuthn */
+router.post('/passkey-challenge', (_req: Request, res: Response): void => {
+    const challenge = crypto.randomBytes(32).toString('base64url');
+    const id = crypto.randomBytes(16).toString('hex');
+    passkeyChallengStore.set(id, { challenge, expires: Date.now() + 5 * 60 * 1000 });
+
+    // Clean expired entries
+    for (const [key, val] of passkeyChallengStore) {
+        if (val.expires < Date.now()) passkeyChallengStore.delete(key);
+    }
+
+    res.json({ success: true, data: { challengeId: id, challenge } });
+});
+
+/** POST /api/auth/passkey-login – Authenticate with a stored passkey */
+router.post('/passkey-login', (req: Request, res: Response): void => {
+    const { credentialId, challengeId } = req.body;
+    if (!credentialId || !challengeId) {
+        res.status(400).json({ success: false, error: 'credentialId and challengeId are required' });
+        return;
+    }
+
+    // Verify challenge exists and is not expired
+    const stored = passkeyChallengStore.get(challengeId);
+    if (!stored || stored.expires < Date.now()) {
+        res.status(400).json({ success: false, error: 'Challenge abgelaufen oder ungültig' });
+        return;
+    }
+    passkeyChallengStore.delete(challengeId);
+
+    // Look up passkey credential
+    const db = getDb();
+    const credential = db.prepare('SELECT * FROM passkey_credentials WHERE id = ?').get(credentialId) as any;
+    if (!credential) {
+        res.status(401).json({ success: false, error: 'Passkey nicht gefunden' });
+        return;
+    }
+
+    // Get the user
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(credential.user_id) as any;
+    if (!user) {
+        res.status(401).json({ success: false, error: 'Benutzer nicht gefunden' });
+        return;
+    }
+
+    // Update counter
+    db.prepare('UPDATE passkey_credentials SET counter = counter + 1 WHERE id = ?').run(credentialId);
+
+    // Issue JWT
+    const config = getConfig();
+    const token = jwt.sign(
+        { userId: user.id, role: user.role },
+        config.auth.jwtSecret,
+        { expiresIn: config.auth.tokenExpiry as string & jwt.SignOptions['expiresIn'] }
+    );
+
+    res.json({ success: true, data: { token, user: formatUser(user) } });
 });
 
 // ─── Password Reset via E-Mail ──────────────────

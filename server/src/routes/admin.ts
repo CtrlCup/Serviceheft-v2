@@ -1,5 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import { getDb } from '../database/connection.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { getConfig, reloadConfig } from '../config.js';
@@ -15,7 +17,7 @@ const router = Router();
 /** GET /api/admin/users */
 router.get('/users', (req: AuthRequest, res: Response): void => {
     const db = getDb();
-    const users = db.prepare('SELECT id, username, email, role, notifications_enabled, created_at FROM users ORDER BY id').all();
+    const users = db.prepare('SELECT id, username, email, role, notifications_enabled, must_change_password, created_at FROM users ORDER BY id').all();
     res.json({ success: true, data: users });
 });
 
@@ -36,10 +38,10 @@ router.post('/users', (req: AuthRequest, res: Response): void => {
 
     const hash = bcrypt.hashSync(password, 10);
     const result = db.prepare(
-        'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)'
+        'INSERT INTO users (username, email, password_hash, role, must_change_password) VALUES (?, ?, ?, ?, 1)'
     ).run(username, email, hash, role);
 
-    const user = db.prepare('SELECT id, username, email, role, notifications_enabled, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
+    const user = db.prepare('SELECT id, username, email, role, notifications_enabled, must_change_password, created_at FROM users WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json({ success: true, data: user });
 });
 
@@ -58,7 +60,7 @@ router.put('/users/:id', (req: AuthRequest, res: Response): void => {
         db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.params.id);
     }
 
-    const updated = db.prepare('SELECT id, username, email, role, notifications_enabled, created_at FROM users WHERE id = ?').get(req.params.id);
+    const updated = db.prepare('SELECT id, username, email, role, notifications_enabled, must_change_password, created_at FROM users WHERE id = ?').get(req.params.id);
     res.json({ success: true, data: updated });
 });
 
@@ -72,6 +74,70 @@ router.delete('/users/:id', (req: AuthRequest, res: Response): void => {
     }
     db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
     res.json({ success: true });
+});
+
+/** PUT /api/admin/users/:id/force-password-change – Toggle must_change_password flag */
+router.put('/users/:id/force-password-change', (req: AuthRequest, res: Response): void => {
+    const { mustChange } = req.body;
+    if (typeof mustChange !== 'boolean') {
+        res.status(400).json({ success: false, error: '"mustChange" (boolean) is required' });
+        return;
+    }
+
+    const db = getDb();
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(req.params.id) as any;
+    if (!user) { res.status(404).json({ success: false, error: 'User not found' }); return; }
+
+    db.prepare('UPDATE users SET must_change_password = ? WHERE id = ?').run(mustChange ? 1 : 0, req.params.id);
+    res.json({ success: true, data: { mustChangePassword: mustChange } });
+});
+
+/** POST /api/admin/users/:id/reset-password – Reset user password */
+router.post('/users/:id/reset-password', (req: AuthRequest, res: Response): void => {
+    const db = getDb();
+    const user = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(req.params.id) as any;
+    if (!user) { res.status(404).json({ success: false, error: 'User not found' }); return; }
+
+    // Generate random password
+    const tempPassword = crypto.randomBytes(6).toString('base64url').slice(0, 12);
+    const hash = bcrypt.hashSync(tempPassword, 10);
+
+    // Set new password and force change on next login
+    db.prepare('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?').run(hash, user.id);
+
+    // Try to send email if SMTP is configured
+    const config = getConfig();
+    if (config.smtp?.host && user.email) {
+        const transporter = nodemailer.createTransport({
+            host: config.smtp.host,
+            port: config.smtp.port,
+            secure: config.smtp.port === 465,
+            auth: { user: config.smtp.user, pass: config.smtp.password },
+        });
+
+        transporter.sendMail({
+            from: config.smtp.from,
+            to: user.email,
+            subject: 'Ihr Passwort wurde zurückgesetzt – Digitales Serviceheft',
+            html: `
+                <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+                    <h2>Passwort zurückgesetzt</h2>
+                    <p>Hallo <strong>${user.username}</strong>,</p>
+                    <p>Ihr Passwort wurde von einem Administrator zurückgesetzt.</p>
+                    <p>Ihr neues temporäres Passwort lautet:</p>
+                    <p style="font-size: 1.25rem; font-family: monospace; background: #f1f5f9; padding: 12px 16px; border-radius: 8px; letter-spacing: 2px;"><strong>${tempPassword}</strong></p>
+                    <p style="color:#888;font-size:0.875rem;">Bitte ändern Sie Ihr Passwort beim nächsten Login.</p>
+                </div>
+            `,
+        }).then(() => {
+            // Email sent successfully
+        }).catch(err => console.error('Failed to send password reset email:', err));
+
+        res.json({ success: true, data: { sent: true } });
+    } else {
+        // No SMTP – return password to admin
+        res.json({ success: true, data: { sent: false, temporaryPassword: tempPassword } });
+    }
 });
 
 // ─── SMTP Config ────────────────────────────────
@@ -93,6 +159,46 @@ router.put('/smtp', (req: AuthRequest, res: Response): void => {
     fs.writeFileSync(configPath, JSON.stringify(raw, null, 2));
     reloadConfig();
     res.json({ success: true, data: raw.smtp });
+});
+
+/** POST /api/admin/smtp/test – Send a test email */
+router.post('/smtp/test', (req: AuthRequest, res: Response): void => {
+    const { to } = req.body;
+    if (!to) {
+        res.status(400).json({ success: false, error: 'Empfänger-Adresse erforderlich' });
+        return;
+    }
+
+    const config = getConfig();
+    if (!config.smtp?.host) {
+        res.status(400).json({ success: false, error: 'SMTP ist nicht konfiguriert' });
+        return;
+    }
+
+    const transporter = nodemailer.createTransport({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        secure: config.smtp.port === 465,
+        auth: { user: config.smtp.user, pass: config.smtp.password },
+    });
+
+    transporter.sendMail({
+        from: config.smtp.from,
+        to,
+        subject: 'Test-Mail – Digitales Serviceheft',
+        html: `
+            <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+                <h2>✅ Test-Mail erfolgreich</h2>
+                <p>Diese E-Mail wurde vom Digitalen Serviceheft gesendet, um die SMTP-Konfiguration zu testen.</p>
+                <p style="color:#888;font-size:0.875rem;">Zeitstempel: ${new Date().toLocaleString('de-DE')}</p>
+            </div>
+        `,
+    }).then(() => {
+        res.json({ success: true, data: { message: 'Test-Mail erfolgreich gesendet' } });
+    }).catch(err => {
+        console.error('SMTP test failed:', err);
+        res.status(500).json({ success: false, error: `Versand fehlgeschlagen: ${err.message}` });
+    });
 });
 
 // ─── System Info ────────────────────────────────
@@ -222,9 +328,6 @@ router.post('/reset', (req: AuthRequest, res: Response): void => {
         for (const { name } of tables) {
             db.exec(`DROP TABLE IF EXISTS "${name}"`);
         }
-
-        // For MariaDB/MySQL: tables would be dropped differently, but since we use the same getDb() abstraction,
-        // this works with SQLite. MariaDB support will handle this in the connection adapter.
 
         // Clear uploads directory
         const uploadsDir = path.resolve(__dirname, '../../uploads');

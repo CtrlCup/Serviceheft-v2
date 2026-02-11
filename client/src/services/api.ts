@@ -42,6 +42,23 @@ export const api = {
             }),
         registrationStatus: () =>
             request<{ registrationEnabled: boolean }>('/api/auth/registration-status'),
+        loginConfig: () =>
+            request<{
+                registrationEnabled: boolean;
+                autheliaEnabled: boolean;
+                autheliaUrl: string;
+                authentikEnabled: boolean;
+                authentikIssuer: string;
+                authentikClientId: string;
+                authentikRedirectUri: string;
+            }>('/api/auth/registration-status'),
+        passkeyChallenge: () =>
+            request<{ challengeId: string; challenge: string }>('/api/auth/passkey-challenge', { method: 'POST' }),
+        passkeyLogin: (credentialId: string, challengeId: string) =>
+            request<{ token: string; user: User }>('/api/auth/passkey-login', {
+                method: 'POST',
+                body: JSON.stringify({ credentialId, challengeId }),
+            }),
         forgotPassword: (email: string) =>
             request<{ message: string }>('/api/auth/forgot-password', {
                 method: 'POST',
@@ -154,9 +171,21 @@ export const api = {
             request<any>(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
         deleteUser: (id: number) =>
             request<void>(`/api/admin/users/${id}`, { method: 'DELETE' }),
+        resetUserPassword: (id: number) =>
+            request<{ sent: boolean; temporaryPassword?: string }>(`/api/admin/users/${id}/reset-password`, { method: 'POST' }),
+        toggleForcePasswordChange: (id: number, mustChange: boolean) =>
+            request<{ mustChangePassword: boolean }>(`/api/admin/users/${id}/force-password-change`, {
+                method: 'PUT',
+                body: JSON.stringify({ mustChange }),
+            }),
         getSmtp: () => request<any>('/api/admin/smtp'),
         updateSmtp: (data: any) =>
             request<any>('/api/admin/smtp', { method: 'PUT', body: JSON.stringify(data) }),
+        sendTestEmail: (to: string) =>
+            request<{ message: string }>('/api/admin/smtp/test', {
+                method: 'POST',
+                body: JSON.stringify({ to }),
+            }),
         getSystem: () => request<any>('/api/admin/system'),
         getConfig: () => request<any>('/api/admin/config'),
         updateConfig: (data: any) =>

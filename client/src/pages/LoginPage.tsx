@@ -3,17 +3,27 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { Wrench, Eye, EyeOff, Fingerprint, ShieldCheck, UserPlus, Mail } from 'lucide-react';
+import { Wrench, Eye, EyeOff, Fingerprint, ShieldCheck, KeyRound, UserPlus, Mail } from 'lucide-react';
 import './LoginPage.css';
 
 type Mode = 'login' | 'register' | 'forgot';
+
+interface LoginConfig {
+    registrationEnabled: boolean;
+    autheliaEnabled: boolean;
+    autheliaUrl: string;
+    authentikEnabled: boolean;
+    authentikIssuer: string;
+    authentikClientId: string;
+    authentikRedirectUri: string;
+}
 
 export default function LoginPage() {
     const { login, register } = useAuth();
     const navigate = useNavigate();
 
     const [mode, setMode] = useState<Mode>('login');
-    const [registrationEnabled, setRegistrationEnabled] = useState(false);
+    const [config, setConfig] = useState<LoginConfig | null>(null);
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -25,9 +35,17 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        api.auth.registrationStatus()
-            .then(data => setRegistrationEnabled(data.registrationEnabled))
-            .catch(() => setRegistrationEnabled(false));
+        api.auth.loginConfig()
+            .then(setConfig)
+            .catch(() => setConfig({
+                registrationEnabled: false,
+                autheliaEnabled: false,
+                autheliaUrl: '',
+                authentikEnabled: false,
+                authentikIssuer: '',
+                authentikClientId: '',
+                authentikRedirectUri: '',
+            }));
     }, []);
 
     const handleSubmit = async (e: FormEvent) => {
@@ -66,6 +84,66 @@ export default function LoginPage() {
         }
     };
 
+    const handlePasskeyLogin = async () => {
+        setError('');
+        try {
+            // Check if WebAuthn is supported
+            if (!window.PublicKeyCredential) {
+                setError('Ihr Browser unterstützt keine Passkeys');
+                return;
+            }
+
+            // Get challenge from server
+            const { challengeId, challenge } = await api.auth.passkeyChallenge();
+
+            // Request credential from browser
+            const credential = await navigator.credentials.get({
+                publicKey: {
+                    challenge: Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+                    timeout: 60000,
+                    rpId: window.location.hostname,
+                    userVerification: 'preferred',
+                },
+            }) as PublicKeyCredential | null;
+
+            if (!credential) {
+                setError('Passkey-Auswahl abgebrochen');
+                return;
+            }
+
+            // Send credential ID to server for verification
+            const credentialId = btoa(String.fromCharCode(...new Uint8Array((credential as any).rawId)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            const { token } = await api.auth.passkeyLogin(credentialId, challengeId);
+            localStorage.setItem('token', token);
+            window.location.href = '/';
+        } catch (err: any) {
+            if (err.name === 'NotAllowedError') {
+                setError('Passkey-Authentifizierung abgebrochen');
+            } else {
+                setError(err.message || 'Passkey-Login fehlgeschlagen');
+            }
+        }
+    };
+
+    const handleAutheliaLogin = () => {
+        if (config?.autheliaUrl) {
+            window.location.href = config.autheliaUrl;
+        }
+    };
+
+    const handleAuthentikLogin = () => {
+        if (config?.authentikIssuer && config?.authentikClientId && config?.authentikRedirectUri) {
+            const authUrl = new URL(`${config.authentikIssuer}authorize/`);
+            authUrl.searchParams.set('client_id', config.authentikClientId);
+            authUrl.searchParams.set('redirect_uri', config.authentikRedirectUri);
+            authUrl.searchParams.set('response_type', 'code');
+            authUrl.searchParams.set('scope', 'openid profile email');
+            window.location.href = authUrl.toString();
+        }
+    };
+
     const switchMode = (newMode: Mode) => {
         setMode(newMode);
         setError('');
@@ -79,6 +157,8 @@ export default function LoginPage() {
         register: 'Erstellen Sie ein neues Konto',
         forgot: 'Wir senden Ihnen einen Link zum Zurücksetzen',
     }[mode];
+
+    const hasAltMethods = config && (config.autheliaEnabled || config.authentikEnabled || !!window.PublicKeyCredential);
 
     return (
         <div className="login-page">
@@ -220,7 +300,7 @@ export default function LoginPage() {
                     </button>
                 )}
 
-                {mode !== 'forgot' && registrationEnabled && (
+                {mode !== 'forgot' && config?.registrationEnabled && (
                     <button
                         className="btn btn-ghost login-switch-btn"
                         type="button"
@@ -235,21 +315,32 @@ export default function LoginPage() {
                     </button>
                 )}
 
-                {mode !== 'forgot' && (
+                {/* Alternative login methods – shown only in login mode and when methods are available */}
+                {mode === 'login' && hasAltMethods && (
                     <>
                         <div className="login-divider">
                             <span>oder</span>
                         </div>
 
                         <div className="login-alt-methods">
-                            <button className="btn btn-secondary login-alt-btn" type="button">
-                                <Fingerprint size={18} />
-                                <span>Passkey verwenden</span>
-                            </button>
-                            <button className="btn btn-secondary login-alt-btn" type="button">
-                                <ShieldCheck size={18} />
-                                <span>Authelia Login</span>
-                            </button>
+                            {window.PublicKeyCredential && (
+                                <button className="btn btn-secondary login-alt-btn" type="button" onClick={handlePasskeyLogin}>
+                                    <Fingerprint size={18} />
+                                    <span>Passkey verwenden</span>
+                                </button>
+                            )}
+                            {config?.autheliaEnabled && (
+                                <button className="btn btn-secondary login-alt-btn" type="button" onClick={handleAutheliaLogin}>
+                                    <ShieldCheck size={18} />
+                                    <span>Authelia Login</span>
+                                </button>
+                            )}
+                            {config?.authentikEnabled && (
+                                <button className="btn btn-secondary login-alt-btn" type="button" onClick={handleAuthentikLogin}>
+                                    <KeyRound size={18} />
+                                    <span>Authentik Login</span>
+                                </button>
+                            )}
                         </div>
                     </>
                 )}
