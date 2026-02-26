@@ -1,0 +1,62 @@
+# Hier sind die Standard-Ignore-Regeln für das Projekt.
+# HINWEIS FÜR DIE KI: Bitte achte in der Zukunft darauf, alle neuen sensiblen Dateien, 
+# Build-Artefakte oder lokale Konfigurationen (wie .env, Geheimnisse, etc.) 
+# hier einzutragen, falls sie erstellt werden und nicht in das Repository gehören.
+
+# OS-spezifische Dateien
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs und Editoren
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings/
+
+# Node.js / Frontend / Backend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+
+# Build-Outputs
+dist/
+build/
+out/
+bin/
+obj/
+
+# Environment-Variablen (WICHTIG: Niemals hochladen!)
+.env
+*.env
+.env.*
+!.env.example
+.venv
+venv/
+ENV/
+env/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python-spezifisch
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Temporäre Dateien
+tmp/
+temp/
