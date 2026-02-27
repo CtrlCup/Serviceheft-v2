@@ -191,7 +191,7 @@ export default function LoginPage() {
                     {/* Username – only for login and register */}
                     {mode !== 'forgot' && (
                         <div className="form-group">
-                            <label className="form-label" htmlFor="username">Benutzername</label>
+                            <label className="form-label" htmlFor="username">Benutzername oder E-Mail</label>
                             <input
                                 id="username"
                                 className="form-input"

@@ -7,16 +7,25 @@ import config from '../config';
 import {
     ArrowLeft, Save, Trash2, Plus, ChevronDown, ChevronRight,
     Wrench, Droplets, ShieldCheck, FileText, Fuel, Settings2,
-    Activity, Gauge, Clock, Wifi, Camera, X as XIcon, Edit3
+    Activity, Gauge, Clock, Wifi, Camera, X as XIcon, Edit3,
+    Eye, EyeOff, Copy, Check
 } from 'lucide-react';
+import { formatRuntime } from '../utils/formatRuntime';
 import carPlaceholder from '../assets/car-placeholder.svg';
 import ConfirmationModal from '../components/ConfirmationModal';
+import Odometer from '../components/ui/Odometer';
 import './VehicleDetailPage.css';
+
+import { useEnterNavigation } from '../hooks/useEnterNavigation';
 
 export default function VehicleDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const vehicleId = Number(id);
+
+    // Enter key navigation
+    const containerRef = useRef<HTMLDivElement>(null);
+    useEnterNavigation(containerRef);
 
     const [vehicle, setVehicle] = useState<Vehicle | null>(null);
     const [records, setRecords] = useState<MaintenanceRecord[]>([]);
@@ -50,6 +59,8 @@ export default function VehicleDetailPage() {
     // Edit/Delete state
     const [showDeleteVehicleModal, setShowDeleteVehicleModal] = useState(false);
     const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
+    const [showToken, setShowToken] = useState(false);
+    const [tokenCopied, setTokenCopied] = useState(false);
 
     const fetchData = useCallback(async () => {
         try {
@@ -222,8 +233,7 @@ export default function VehicleDetailPage() {
         if (d) { if (!recordsByDate[d]) recordsByDate[d] = []; recordsByDate[d].push(r); }
     });
 
-    const engineHours = vehicle ? Math.floor(vehicle.engine_runtime / 3600) : 0;
-    const engineMin = vehicle ? Math.floor((vehicle.engine_runtime % 3600) / 60) : 0;
+    const formattedRuntime = vehicle ? formatRuntime(vehicle.engine_runtime, true) : '0h';
 
     if (loading) return <div className="empty-state"><p>Lade...</p></div>;
     if (!vehicle) return <div className="empty-state"><p>Fahrzeug nicht gefunden</p></div>;
@@ -301,17 +311,17 @@ export default function VehicleDetailPage() {
 
             {/* ─── Stammdaten Tab ──────────────────── */}
             {activeTab === 'stammdaten' && (
-                <div className="detail-section">
+                <div className="detail-section" ref={containerRef}>
                     <div className="grid grid-2">
                         {[
-                            { label: 'Kennzeichen', key: 'licensePlate' },
-                            { label: 'Marke', key: 'brand' },
-                            { label: 'Modell', key: 'model' },
-                            { label: 'Baujahr', key: 'year', type: 'number' },
-                            { label: 'Farbe', key: 'color' },
-                            { label: 'VIN', key: 'vin' },
-                            { label: 'HSN', key: 'hsn' },
-                            { label: 'TSN', key: 'tsn' },
+                            { label: 'Kennzeichen', key: 'licensePlate', placeholder: 'M-XY 1234' },
+                            { label: 'Marke', key: 'brand', placeholder: 'z.B. BMW' },
+                            { label: 'Modell', key: 'model', placeholder: 'z.B. 320i' },
+                            { label: 'Baujahr', key: 'year', type: 'number', placeholder: '2023' },
+                            { label: 'Farbe', key: 'color', placeholder: 'Schwarz' },
+                            { label: 'VIN', key: 'vin', placeholder: 'WBA...' },
+                            { label: 'HSN', key: 'hsn', placeholder: '0005' },
+                            { label: 'TSN', key: 'tsn', placeholder: 'ABC' },
                             { label: 'Kilometerstand', key: 'mileage', type: 'number' },
                             { label: 'Kaufdatum', key: 'purchaseDate', type: 'date' },
                             { label: 'Kaufpreis (€)', key: 'purchasePrice', type: 'number' },
@@ -323,7 +333,14 @@ export default function VehicleDetailPage() {
                                     className="form-input"
                                     type={field.type || 'text'}
                                     value={(editData as any)[field.key] ?? ''}
-                                    onChange={e => setEditData(d => ({ ...d, [field.key]: field.type === 'number' ? Number(e.target.value) : e.target.value }))}
+                                    placeholder={(field as any).placeholder}
+                                    onChange={e => {
+                                        let val = e.target.value;
+                                        if (['licensePlate', 'vin', 'hsn', 'tsn'].includes(field.key)) {
+                                            val = val.toUpperCase();
+                                        }
+                                        setEditData(d => ({ ...d, [field.key]: field.type === 'number' ? Number(val) : val }));
+                                    }}
                                 />
                             </div>
                         ))}
@@ -332,8 +349,41 @@ export default function VehicleDetailPage() {
                     <div className="card" style={{ marginTop: 'var(--space-lg)', background: 'var(--bg-base)' }}>
                         <div className="form-group">
                             <label className="form-label">UDP Token (für Live-Datenübertragung)</label>
-                            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                <input className="form-input" value={editData.udpToken ?? ''} readOnly style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }} />
+                            <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <input
+                                        className="form-input"
+                                        value={editData.udpToken ?? ''}
+                                        readOnly
+                                        style={{
+                                            fontFamily: 'var(--font-mono)',
+                                            fontSize: '0.8125rem',
+                                            filter: showToken ? 'none' : 'blur(6px)',
+                                            userSelect: showToken ? 'all' : 'none',
+                                            transition: 'filter 0.2s ease',
+                                        }}
+                                    />
+                                </div>
+                                <button
+                                    className="btn btn-ghost btn-icon"
+                                    onClick={() => setShowToken(!showToken)}
+                                    title={showToken ? 'Token verbergen' : 'Token anzeigen'}
+                                    style={{ flexShrink: 0 }}
+                                >
+                                    {showToken ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                                <button
+                                    className="btn btn-ghost btn-icon"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(editData.udpToken ?? '');
+                                        setTokenCopied(true);
+                                        setTimeout(() => setTokenCopied(false), 2000);
+                                    }}
+                                    title="In Zwischenablage kopieren"
+                                    style={{ flexShrink: 0, color: tokenCopied ? 'var(--success)' : undefined }}
+                                >
+                                    {tokenCopied ? <Check size={18} /> : <Copy size={18} />}
+                                </button>
                             </div>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                 Dieses Token wird verwendet, um Daten vom Fahrzeug über UDP zuzuordnen.
@@ -343,12 +393,18 @@ export default function VehicleDetailPage() {
 
                     <div className="detail-summary">
                         <div className="card">
+                            <span className="form-label">Kilometerstand</span>
+                            <div style={{ marginTop: 'var(--space-sm)' }}>
+                                <Odometer value={vehicle.mileage} decimal={!!vehicle.last_seen} animate={false} />
+                            </div>
+                        </div>
+                        <div className="card">
                             <span className="form-label">Gesamtausgaben</span>
                             <span className="stat-value">{vehicle.total_expenses.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
                         </div>
                         <div className="card">
                             <span className="form-label">Motorlaufzeit</span>
-                            <span className="stat-value">{engineHours}h {engineMin}m</span>
+                            <span className="stat-value">{formattedRuntime}</span>
                         </div>
                     </div>
 
@@ -598,7 +654,7 @@ export default function VehicleDetailPage() {
                                 <Gauge size={18} />
                                 <span className="form-label">Kilometerstand</span>
                             </div>
-                            <span className="stat-value">{(liveData?.mileage ?? vehicle.mileage).toLocaleString('de-DE')} km</span>
+                            <Odometer value={liveData?.mileage ?? vehicle.mileage} decimal animate />
                         </div>
 
                         <div className="card">
@@ -606,7 +662,7 @@ export default function VehicleDetailPage() {
                                 <Activity size={18} />
                                 <span className="form-label">Motorlaufzeit</span>
                             </div>
-                            <span className="stat-value">{engineHours}h {engineMin}m</span>
+                            <span className="stat-value">{formattedRuntime}</span>
                         </div>
 
                         <div className="card">

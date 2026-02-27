@@ -6,10 +6,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const configPath = path.resolve(__dirname, '../../config.json');
 
 export interface DatabaseConfig {
-    type: 'sqlite' | 'mysql' | 'mariadb' | 'postgresql';
+    type: 'sqlite';
     sqlite: { path: string };
-    mysql: { host: string; port: number; user: string; password: string; database: string };
-    postgresql: { host: string; port: number; user: string; password: string; database: string };
 }
 
 export interface SmtpConfig {

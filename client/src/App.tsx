@@ -1,16 +1,32 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Layout from './components/layout/Layout';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ForcePasswordChangePage from './pages/ForcePasswordChangePage';
-import DashboardPage from './pages/DashboardPage';
-import VehicleDetailPage from './pages/VehicleDetailPage';
-import AdminPage from './pages/AdminPage';
-import SettingsPage from './pages/SettingsPage';
+import Layout from './components/layout/Layout';
 
-function AppRoutes() {
+
+function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
+  const { isAuthenticated, loading, user } = useAuth();
+
+  if (loading) {
+    return <div className="loading">Laden...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (adminOnly && user?.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/** Inner app component that can safely use useAuth() */
+function AppContent() {
   const { isAuthenticated, loading, mustChangePassword } = useAuth();
 
   if (loading) {
@@ -21,42 +37,31 @@ function AppRoutes() {
     );
   }
 
-  // Force password change: redirect all routes to /change-password
-  if (isAuthenticated && mustChangePassword) {
-    return (
-      <Routes>
-        <Route path="/change-password" element={<ForcePasswordChangePage />} />
-        <Route path="*" element={<Navigate to="/change-password" replace />} />
-      </Routes>
-    );
-  }
-
   return (
-    <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/" replace /> : <ResetPasswordPage />} />
-      <Route path="/change-password" element={<Navigate to="/" replace />} />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
+        <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/" replace /> : <ResetPasswordPage />} />
 
-      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/vehicle/:id" element={<VehicleDetailPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/admin" element={
-          <ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>
+        <Route path="/*" element={
+          <ProtectedRoute>
+            <Layout />
+            {/* Force password change modal overlay */}
+            {mustChangePassword && <ForcePasswordChangePage />}
+          </ProtectedRoute>
         } />
-      </Route>
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
+/** Root component – AuthProvider wraps everything so useAuth() works in AppContent */
 export default function App() {
   return (
-    <BrowserRouter>
+    <ThemeProvider>
       <AuthProvider>
-        <AppRoutes />
+        <AppContent />
       </AuthProvider>
-    </BrowserRouter>
+    </ThemeProvider>
   );
 }

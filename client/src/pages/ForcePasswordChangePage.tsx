@@ -3,6 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
+/**
+ * Force Password Change Modal – Renders as a centered modal overlay
+ * with blurred background showing the dashboard beneath.
+ */
 export default function ForcePasswordChangePage() {
     const { refreshUser } = useAuth();
     const [newPassword, setNewPassword] = useState('');
@@ -29,8 +33,6 @@ export default function ForcePasswordChangePage() {
             await api.settings.updateProfile({ newPassword, currentPassword: '' });
             await refreshUser();
         } catch (err: any) {
-            // If "current password required", the first change doesn't need one (must_change_password flow)
-            // Try without currentPassword — the server should allow it for must_change_password
             setError(err.message || 'Fehler beim Ändern des Passworts');
         } finally {
             setLoading(false);
@@ -38,8 +40,26 @@ export default function ForcePasswordChangePage() {
     };
 
     return (
-        <div className="login-container">
-            <div className="login-card">
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            padding: 'var(--space-lg)',
+            animation: 'fadeIn 0.3s ease-out',
+        }}>
+            <div className="card" style={{
+                width: '100%',
+                maxWidth: 440,
+                animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 40px rgba(99, 102, 241, 0.1)',
+                padding: 'var(--space-2xl)',
+            }}>
                 <div style={{ textAlign: 'center', marginBottom: 'var(--space-xl)' }}>
                     <div style={{
                         width: 56, height: 56, borderRadius: '50%',
@@ -49,22 +69,30 @@ export default function ForcePasswordChangePage() {
                     }}>
                         <AlertTriangle size={28} />
                     </div>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 'var(--space-xs)' }}>
+                    <h1 style={{ fontSize: '1.375rem', fontWeight: 700, marginBottom: 'var(--space-xs)' }}>
                         Passwort ändern
                     </h1>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
                         Sie müssen Ihr Passwort ändern, bevor Sie fortfahren können.
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     {error && (
-                        <div className="error-message" style={{ marginBottom: 'var(--space-md)' }}>
+                        <div style={{
+                            background: 'var(--danger-bg)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '0.625rem var(--space-md)',
+                            color: 'var(--danger)',
+                            fontSize: '0.8125rem',
+                            marginBottom: 'var(--space-md)',
+                        }}>
                             {error}
                         </div>
                     )}
 
-                    <div className="form-group">
+                    <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
                         <label className="form-label">Neues Passwort</label>
                         <div style={{ position: 'relative' }}>
                             <Lock size={16} style={{
@@ -96,7 +124,7 @@ export default function ForcePasswordChangePage() {
                         </div>
                     </div>
 
-                    <div className="form-group">
+                    <div className="form-group" style={{ marginBottom: 'var(--space-lg)' }}>
                         <label className="form-label">Passwort bestätigen</label>
                         <div style={{ position: 'relative' }}>
                             <Lock size={16} style={{
@@ -119,7 +147,7 @@ export default function ForcePasswordChangePage() {
                         className="btn btn-primary"
                         type="submit"
                         disabled={loading || !newPassword || !confirmPassword}
-                        style={{ width: '100%', marginTop: 'var(--space-md)' }}
+                        style={{ width: '100%' }}
                     >
                         {loading ? 'Wird gespeichert...' : 'Passwort ändern'}
                     </button>

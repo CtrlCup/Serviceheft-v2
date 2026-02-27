@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Gauge, Calendar, Fuel, Activity } from 'lucide-react';
 import type { Vehicle } from '../../types';
+import { formatRuntime } from '../../utils/formatRuntime';
 import './VehicleCard.css';
 
 interface Props {
@@ -21,8 +22,6 @@ export default function VehicleCard({ vehicle }: Props) {
     };
 
     const status = getStatusInfo();
-    const engineHours = Math.floor(vehicle.engine_runtime / 3600);
-    const engineMinutes = Math.floor((vehicle.engine_runtime % 3600) / 60);
 
     const tuevDate = vehicle.next_tuev_date ? new Date(vehicle.next_tuev_date) : null;
     const tuevSoon = tuevDate && (tuevDate.getTime() - Date.now()) < 30 * 24 * 60 * 60 * 1000;
@@ -73,7 +72,7 @@ export default function VehicleCard({ vehicle }: Props) {
                     {vehicle.engine_runtime > 0 && (
                         <div className="vehicle-stat">
                             <Activity size={14} />
-                            <span>{engineHours}h {engineMinutes}m</span>
+                            <span>{formatRuntime(vehicle.engine_runtime)}</span>
                         </div>
                     )}
                 </div>

@@ -1,32 +1,18 @@
 {
     "appName": "Digitales Serviceheft",
     "database": {
-        "type": "mariadb",
+        "type": "sqlite",
         "sqlite": {
             "path": "./data/serviceheft.db"
-        },
-        "mysql": {
-            "host": "db",
-            "port": 3306,
-            "user": "serviceheft",
-            "password": "CHANGE_ME",
-            "database": "serviceheft"
-        },
-        "postgresql": {
-            "host": "localhost",
-            "port": 5432,
-            "user": "",
-            "password": "",
-            "database": "serviceheft"
         }
     },
     "smtp": {
-        "host": "",
+        "host": "smtp.example.com",
         "port": 587,
         "secure": false,
-        "user": "",
-        "password": "",
-        "from": ""
+        "user": "serviceheft@example.com",
+        "password": "serviceheft",
+        "from": "serviceheft@example.com"
     },
     "udp": {
         "port": 41234,
@@ -37,14 +23,14 @@
         "tokenExpiry": "7d",
         "authelia": {
             "enabled": false,
-            "url": ""
+            "url": "https://authelia.example.com"
         },
         "authentik": {
             "enabled": false,
-            "issuer": "",
-            "clientId": "",
-            "clientSecret": "",
-            "redirectUri": ""
+            "issuer": "https://authentik.example.com",
+            "clientId": "serviceheft",
+            "clientSecret": "serviceheft",
+            "redirectUri": "https://serviceheft.example.com/api/auth/callback/authentik"
         }
     },
     "server": {

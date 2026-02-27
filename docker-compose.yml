@@ -1,6 +1,6 @@
 services:
   # ─── Serviceheft App ─────────────────────────────
-  app:
+  serviceheft-webserver:
     build: .
     restart: unless-stopped
     ports:
@@ -12,4 +12,14 @@ services:
       - ./config.json:/app/config.json
     environment:
       NODE_ENV: production
+      PUID: ${UID:-1000}
+      PGID: ${GID:-1000}
+    # Run as root initially so the entrypoint can fix permissions,
+    # then it drops to the target UID/GID via su-exec.
+    init: true
+#     networks:
+#       - proxy
 
+# networks:
+#   proxy:
+#     external: true

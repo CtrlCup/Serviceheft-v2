@@ -13,6 +13,8 @@ export default function SettingsPage() {
     // Profile editing
     const [editUsername, setEditUsername] = useState('');
     const [editEmail, setEditEmail] = useState('');
+    const [editFirstname, setEditFirstname] = useState('');
+    const [editLastname, setEditLastname] = useState('');
     const [profileMsg, setProfileMsg] = useState('');
     const [profileError, setProfileError] = useState('');
     const [savingProfile, setSavingProfile] = useState(false);
@@ -42,6 +44,8 @@ export default function SettingsPage() {
             setNotificationsEnabled(user.notificationsEnabled);
             setEditUsername(user.username);
             setEditEmail(user.email);
+            setEditFirstname(user.firstname || '');
+            setEditLastname(user.lastname || '');
             setAvatarPreview(user.avatar ? `${config.apiUrl}/${user.avatar}` : '');
         }
     }, [user]);
@@ -96,7 +100,7 @@ export default function SettingsPage() {
         }
     };
 
-    // ─── Profile save (username / email only) ───
+    // ─── Profile save (username / email / names) ───
     const handleProfileSave = async () => {
         setProfileMsg('');
         setProfileError('');
@@ -106,6 +110,8 @@ export default function SettingsPage() {
             const data: Record<string, string> = {};
             if (editUsername !== user?.username) data.username = editUsername;
             if (editEmail !== user?.email) data.email = editEmail;
+            if (editFirstname !== (user?.firstname || '')) data.firstname = editFirstname;
+            if (editLastname !== (user?.lastname || '')) data.lastname = editLastname;
 
             if (Object.keys(data).length === 0) {
                 setProfileMsg('Keine Änderungen vorhanden');
@@ -151,6 +157,51 @@ export default function SettingsPage() {
             setSavingPw(false);
         }
     };
+
+    // ─── Passkey handlers ───────────────────────
+    // ... (rest of passkey handlers same) ...
+    // And insert the inputs in the JSX separately? No, better do it in one go if I can match the block.
+    // The previous view_file shows lines. I will replace the state defs + handles + the JSX for inputs.
+    // That's a large block.
+    // Let's replace the Logic block first, then the JSX block.
+
+    // Changing strategy: Replace the top part (state + handlers).
+
+    // Wait, the ReplacementContent above includes handlers I don't want to replace if I can avoid it?
+    // No, I need to update handleProfileSave.
+
+    // I will use START/END lines from original file.
+    // Lines 13 to 124 covers State -> handleProfileSave.
+
+    // I need to be careful with "Passkey handlers" comment line which is line 155.
+    // My replacement content went up to handlePasswordChange.
+
+    // Let's do it in chunks.
+
+    // Chunk 1: State + Effects (Lines 13-53)
+    // Chunk 2: handleProfileSave (Lines 99-124)
+    // Chunk 3: JSX Inputs (Lines 348-371)
+
+    // I will use multi_replace for this.
+
+    /*
+    Chunk 1:
+    Lines 13-47
+    To update state and useEffect.
+    
+    Chunk 2:
+    Lines 100-124
+    To update handleProfileSave.
+    
+    Chunk 3:
+    Lines 348-371
+    To add the new inputs.
+    */
+
+    // I'll construct the multi_replace call.
+
+
+
 
     // ─── Passkey handlers ───────────────────────
     const handleRegisterPasskey = async () => {
@@ -354,6 +405,30 @@ export default function SettingsPage() {
                                 type="text"
                                 value={editUsername}
                                 onChange={e => setEditUsername(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handleProfileSave)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="edit-firstname">Vorname</label>
+                            <input
+                                id="edit-firstname"
+                                className="form-input"
+                                type="text"
+                                value={editFirstname}
+                                onChange={e => setEditFirstname(e.target.value)}
+                                onKeyDown={e => handleKeyDown(e, handleProfileSave)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" htmlFor="edit-lastname">Nachname</label>
+                            <input
+                                id="edit-lastname"
+                                className="form-input"
+                                type="text"
+                                value={editLastname}
+                                onChange={e => setEditLastname(e.target.value)}
                                 onKeyDown={e => handleKeyDown(e, handleProfileSave)}
                             />
                         </div>

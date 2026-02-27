@@ -1,0 +1,168 @@
+/* ═══════════════════════════════════════════════════
+   Retro Mechanical Odometer
+   ═══════════════════════════════════════════════════ */
+
+.odometer {
+    display: inline-flex;
+    align-items: center;
+    user-select: none;
+}
+
+.odometer-digits {
+    display: flex;
+    align-items: stretch;
+    background: #0a0a0a;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+        inset 0 2px 4px rgba(0, 0, 0, 0.6),
+        0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.odometer-digit {
+    position: relative;
+    width: 32px;
+    height: 48px;
+    overflow: hidden;
+    background: linear-gradient(
+        180deg,
+        #0d0d0d 0%,
+        #1a1a1a 45%,
+        #1a1a1a 55%,
+        #0d0d0d 100%
+    );
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.odometer-digit:first-child {
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.odometer-digit.last:not(.decimal) {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    border-right: none;
+}
+
+.odometer-digit.decimal {
+    background: linear-gradient(
+        180deg,
+        #1a0a0a 0%,
+        #2a1515 45%,
+        #2a1515 55%,
+        #1a0a0a 100%
+    );
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    border-right: none;
+}
+
+/* Center groove / split line */
+.odometer-digit::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.odometer-digit-inner {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s ease-out;
+}
+
+.odometer-digit-current,
+.odometer-digit-next {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #e8e8e8;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+    letter-spacing: -0.02em;
+}
+
+.odometer-digit.decimal .odometer-digit-current,
+.odometer-digit.decimal .odometer-digit-next {
+    color: #ff6b6b;
+}
+
+/* Separator (comma) */
+.odometer-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    background: #0a0a0a;
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.odometer-separator span {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #e8e8e8;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+/* Unit label */
+.odometer-unit {
+    display: flex;
+    align-items: center;
+    padding: 0 10px 0 8px;
+    background: linear-gradient(
+        180deg,
+        #0d0d0d 0%,
+        #181818 50%,
+        #0d0d0d 100%
+    );
+    border-left: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.odometer-unit span {
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ─── Responsive ─────────────────────────────────── */
+@media (max-width: 480px) {
+    .odometer-digit {
+        width: 24px;
+        height: 36px;
+    }
+
+    .odometer-digit-current,
+    .odometer-digit-next {
+        height: 36px;
+        font-size: 1.125rem;
+    }
+
+    .odometer-separator {
+        width: 10px;
+    }
+
+    .odometer-separator span {
+        font-size: 1rem;
+    }
+
+    .odometer-unit {
+        padding: 0 6px;
+    }
+
+    .odometer-unit span {
+        font-size: 0.5625rem;
+    }
+}

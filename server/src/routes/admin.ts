@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { getDb } from '../database/connection.js';
+import { runMigrations } from '../database/migrations.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { getConfig, reloadConfig } from '../config.js';
 import fs from 'fs';
@@ -293,10 +294,7 @@ router.put('/config', (req: AuthRequest, res: Response): void => {
     }
 
     if (updates.database) {
-        if (updates.database.type !== undefined) existing.database.type = updates.database.type;
         if (updates.database.sqlite?.path !== undefined) existing.database.sqlite.path = updates.database.sqlite.path;
-        if (updates.database.mysql) Object.assign(existing.database.mysql, updates.database.mysql);
-        if (updates.database.postgresql) Object.assign(existing.database.postgresql, updates.database.postgresql);
     }
 
     fs.writeFileSync(configPath, JSON.stringify(existing, null, 2));
@@ -340,7 +338,6 @@ router.post('/reset', (req: AuthRequest, res: Response): void => {
         }
 
         // Re-run migrations (creates tables + default admin user)
-        const { runMigrations } = require('../database/migrations.js');
         runMigrations();
 
         res.json({ success: true, message: 'System has been reset successfully.' });

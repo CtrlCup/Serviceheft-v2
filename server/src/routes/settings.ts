@@ -40,6 +40,8 @@ function formatUser(user: any) {
         role: user.role,
         notificationsEnabled: !!user.notifications_enabled,
         avatar: user.avatar || '',
+        firstname: user.firstname || '',
+        lastname: user.lastname || '',
     };
 }
 
@@ -56,9 +58,9 @@ router.put('/notifications', (req: AuthRequest, res: Response): void => {
     res.json({ success: true, data: { notificationsEnabled: enabled } });
 });
 
-/** PUT /api/settings/profile – Update own profile (username, email, password) */
+/** PUT /api/settings/profile – Update own profile (username, email, password, names) */
 router.put('/profile', (req: AuthRequest, res: Response): void => {
-    const { username, email, currentPassword, newPassword } = req.body;
+    const { username, email, currentPassword, newPassword, firstname, lastname } = req.body;
     const db = getDb();
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId!) as any;
     if (!user) { res.status(404).json({ success: false, error: 'Benutzer nicht gefunden' }); return; }
@@ -99,7 +101,15 @@ router.put('/profile', (req: AuthRequest, res: Response): void => {
         db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, req.userId!);
     }
 
-    const updated = db.prepare('SELECT id, username, email, role, notifications_enabled, avatar FROM users WHERE id = ?').get(req.userId!) as any;
+    // Update names
+    if (firstname !== undefined) {
+        db.prepare('UPDATE users SET firstname = ? WHERE id = ?').run(firstname, req.userId!);
+    }
+    if (lastname !== undefined) {
+        db.prepare('UPDATE users SET lastname = ? WHERE id = ?').run(lastname, req.userId!);
+    }
+
+    const updated = db.prepare('SELECT id, username, email, role, notifications_enabled, avatar, firstname, lastname FROM users WHERE id = ?').get(req.userId!) as any;
     res.json({ success: true, data: formatUser(updated) });
 });
 

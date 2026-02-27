@@ -9,6 +9,8 @@ export interface User {
     role: 'admin' | 'user';
     notificationsEnabled: boolean;
     avatar: string;
+    firstname?: string;
+    lastname?: string;
     mustChangePassword?: boolean;
 }
 

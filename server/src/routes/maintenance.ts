@@ -35,9 +35,7 @@ const recalculateVehicleStats = (db: any, vehicleId: number | string) => {
     `).run(stats.max_mileage || 0, stats.total_cost || 0, vehicleId);
 };
 
-export default router;
-
-// ─── Apply to Routes ───
+// ─── Create / Update / Delete Routes ───
 
 /** POST /api/vehicles/:vehicleId/maintenance – Create record */
 router.post('/:vehicleId/maintenance', (req: AuthRequest, res: Response): void => {
@@ -122,3 +120,5 @@ router.delete('/:vehicleId/maintenance/:id', (req: AuthRequest, res: Response): 
 
     res.json({ success: true });
 });
+
+export default router;

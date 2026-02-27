@@ -47,7 +47,7 @@ export default function DashboardPage() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Dashboard</h1>
-                    <p className="page-subtitle">Willkommen zurück, {user?.username}</p>
+                    <p className="page-subtitle">Willkommen zurück, {user?.lastname || user?.username}</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => setShowModal(true)}>
                     <Plus size={18} />

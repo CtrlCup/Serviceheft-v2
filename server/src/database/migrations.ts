@@ -141,4 +141,84 @@ export function runMigrations(): void {
     `).run('admin', 'admin@example.com', hash, 'admin');
     console.log('  ✓ Default admin user created (admin / admin123)');
   }
+
+  // ─── Migration: Add firstname/lastname to users ───
+  try {
+    const tableInfo = db.pragma('table_info(users)') as any[];
+    if (!tableInfo.some(c => c.name === 'firstname')) {
+      db.exec("ALTER TABLE users ADD COLUMN firstname TEXT NOT NULL DEFAULT ''");
+      console.log('  ✓ Migration: added firstname to users');
+    }
+    if (!tableInfo.some(c => c.name === 'lastname')) {
+      db.exec("ALTER TABLE users ADD COLUMN lastname TEXT NOT NULL DEFAULT ''");
+      console.log('  ✓ Migration: added lastname to users');
+    }
+  } catch (e) {
+    console.error('  ! Migration error (firstname/lastname):', e);
+  }
+
+  // ─── Migration: Mileage precision (REAL) in vehicles ───
+  // We need to check if mileage is already REAL or if we need to migrate.
+  // Since SQLite columns have flexible types, we can just start storing floats.
+  // However, to be "Strict", we should ideally update the schema definition.
+  // SQLite doesn't support changing column type directly. We must recreate the table.
+  // We will check if the schema definition contains "mileage INTEGER".
+  const vehiclesSchema = (db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='vehicles'").get() as any).sql;
+  if (vehiclesSchema && vehiclesSchema.includes('mileage INTEGER')) {
+    console.log('  ➜ Migrating vehicles table to support REAL mileage...');
+    db.transaction(() => {
+      // 1. Rename old table
+      db.exec('ALTER TABLE vehicles RENAME TO vehicles_old');
+
+      // 2. Create new table with REAL mileage (and other fields same as before)
+      db.exec(`
+            CREATE TABLE vehicles (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              license_plate TEXT NOT NULL DEFAULT '',
+              brand TEXT NOT NULL DEFAULT '',
+              model TEXT NOT NULL DEFAULT '',
+              year INTEGER NOT NULL DEFAULT 0,
+              color TEXT NOT NULL DEFAULT '',
+              vin TEXT NOT NULL DEFAULT '',
+              hsn TEXT NOT NULL DEFAULT '',
+              tsn TEXT NOT NULL DEFAULT '',
+              mileage REAL NOT NULL DEFAULT 0,
+              purchase_date TEXT NOT NULL DEFAULT '',
+              purchase_price REAL NOT NULL DEFAULT 0,
+              total_expenses REAL NOT NULL DEFAULT 0,
+              next_tuev_date TEXT NOT NULL DEFAULT '',
+              image_path TEXT NOT NULL DEFAULT '',
+              udp_token TEXT NOT NULL DEFAULT '',
+              engine_runtime INTEGER NOT NULL DEFAULT 0,
+              engine_status TEXT NOT NULL DEFAULT 'off' CHECK(engine_status IN ('off','ignition','running')),
+              fuel_level REAL NOT NULL DEFAULT 0,
+              last_seen TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+          `);
+
+      // 3. Copy data
+      db.exec(`
+            INSERT INTO vehicles (
+                id, user_id, license_plate, brand, model, year, color, vin, hsn, tsn, 
+                mileage, purchase_date, purchase_price, total_expenses, next_tuev_date, 
+                image_path, udp_token, engine_runtime, engine_status, fuel_level, last_seen, created_at
+            )
+            SELECT 
+                id, user_id, license_plate, brand, model, year, color, vin, hsn, tsn, 
+                CAST(mileage AS REAL), purchase_date, purchase_price, total_expenses, next_tuev_date, 
+                image_path, udp_token, engine_runtime, engine_status, fuel_level, last_seen, created_at
+            FROM vehicles_old
+          `);
+
+      // 4. Recreate indexes
+      db.exec('CREATE INDEX IF NOT EXISTS idx_vehicles_user ON vehicles(user_id)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_vehicles_token ON vehicles(udp_token)');
+
+      // 5. Drop old table
+      db.exec('DROP TABLE vehicles_old');
+    })();
+    console.log('  ✓ Migration: vehicles table updated to REAL mileage');
+  }
 }

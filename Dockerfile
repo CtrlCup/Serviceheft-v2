@@ -22,6 +22,9 @@ RUN npm run build
 FROM node:20-alpine AS production
 WORKDIR /app
 
+# Install su-exec for entrypoint user switching
+RUN apk add --no-cache su-exec
+
 # Install production dependencies
 COPY server/package*.json ./server/
 RUN cd server && npm ci --omit=dev
@@ -33,10 +36,16 @@ COPY --from=server-build /app/server/dist ./server/dist
 # Copy config
 COPY config.json ./config.json
 
-# Create directories
+# Create directories with correct ownership BEFORE switching user.
+# The entrypoint script will chown these if needed.
 RUN mkdir -p server/data server/uploads
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 3001
 EXPOSE 41234/udp
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "server/dist/index.js"]

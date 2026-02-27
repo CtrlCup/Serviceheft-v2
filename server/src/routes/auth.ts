@@ -18,6 +18,8 @@ function formatUser(user: any) {
         role: user.role,
         notificationsEnabled: !!user.notifications_enabled,
         avatar: user.avatar || '',
+        firstname: user.firstname || '',
+        lastname: user.lastname || '',
         mustChangePassword: !!user.must_change_password,
     };
 }
@@ -31,7 +33,9 @@ router.post('/login', (req: AuthRequest, res: Response): void => {
     }
 
     const db = getDb();
-    const user = db.prepare('SELECT * FROM users WHERE lower(username) = lower(?)').get(username) as any;
+    // Allow login via username OR email
+    const user = db.prepare('SELECT * FROM users WHERE lower(username) = lower(?) OR lower(email) = lower(?)').get(username, username) as any;
+
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
         res.status(401).json({ success: false, error: 'Invalid credentials' });
         return;
@@ -56,7 +60,7 @@ router.post('/register', (req: AuthRequest, res: Response): void => {
         return;
     }
 
-    const { username, email, password } = req.body;
+    const { username, email, password, firstname, lastname } = req.body;
     if (!username || !email || !password) {
         res.status(400).json({ success: false, error: 'Username, E-Mail und Passwort erforderlich' });
         return;
@@ -74,8 +78,8 @@ router.post('/register', (req: AuthRequest, res: Response): void => {
 
     const hash = bcrypt.hashSync(password, 10);
     const result = db.prepare(
-        'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)'
-    ).run(username, email, hash, 'user');
+        'INSERT INTO users (username, email, password_hash, role, firstname, lastname) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(username, email, hash, 'user', firstname || '', lastname || '');
 
     const config = getConfig();
     const token = jwt.sign(
@@ -95,6 +99,8 @@ router.post('/register', (req: AuthRequest, res: Response): void => {
                 role: 'user',
                 notificationsEnabled: true,
                 avatar: '',
+                firstname: firstname || '',
+                lastname: lastname || '',
                 mustChangePassword: false,
             },
         },

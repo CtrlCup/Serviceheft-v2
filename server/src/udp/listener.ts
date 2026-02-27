@@ -50,7 +50,7 @@ export function startUdpListener(): void {
                 values.push(data.engineStatus);
             }
             if (data.engineRuntime !== undefined) {
-                updates.push('engine_runtime = ?');
+                updates.push('engine_runtime = MAX(engine_runtime, ?)');
                 values.push(data.engineRuntime);
             }
 

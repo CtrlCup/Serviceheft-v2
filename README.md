@@ -92,7 +92,7 @@ In `config.json` den Datenbanktyp ändern:
 ```json
 {
   "database": {
-    "type": "sqlite"  oder  "(mariadb)"
+    "type": "sqlite"  oder  "mariadb"
   }
 }
 ```
