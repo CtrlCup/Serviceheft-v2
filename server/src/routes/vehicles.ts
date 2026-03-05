@@ -115,7 +115,14 @@ router.put('/:id', (req: AuthRequest, res: Response): void => {
         color: 'color', vin: 'vin', hsn: 'hsn', tsn: 'tsn', mileage: 'mileage',
         purchaseDate: 'purchase_date', purchasePrice: 'purchase_price',
         totalExpenses: 'total_expenses', nextTuevDate: 'next_tuev_date',
-        imagePath: 'image_path', udpToken: 'udp_token'
+        imagePath: 'image_path', udpToken: 'udp_token',
+        fuelTypeVehicle: 'fuel_type_vehicle', engineType: 'engine_type',
+        powerPs: 'power_ps', displacementCc: 'displacement_cc',
+        transmission: 'transmission', drivetrain: 'drivetrain',
+        doors: 'doors', seats: 'seats', curbWeightKg: 'curb_weight_kg',
+        firstRegistration: 'first_registration',
+        insuranceCompany: 'insurance_company', insuranceNumber: 'insurance_number',
+        notes: 'notes',
     };
 
     const updates: string[] = [];

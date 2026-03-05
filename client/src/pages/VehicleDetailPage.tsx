@@ -5,10 +5,10 @@ import type { Vehicle, MaintenanceRecord, MaintenanceType } from '../types';
 import { MaintenanceTypeLabels, MaintenanceTypeColors } from '../types';
 import config from '../config';
 import {
-    ArrowLeft, Save, Trash2, Plus, ChevronDown, ChevronRight,
+    ArrowLeft, Trash2, Plus, ChevronDown, ChevronRight,
     Wrench, Droplets, ShieldCheck, FileText, Fuel, Settings2,
     Activity, Gauge, Clock, Wifi, Camera, X as XIcon, Edit3,
-    Eye, EyeOff, Copy, Check
+    Eye, EyeOff, Copy, Check, Car, Cog, FileBarChart, StickyNote
 } from 'lucide-react';
 import { formatRuntime } from '../utils/formatRuntime';
 import carPlaceholder from '../assets/car-placeholder.svg';
@@ -33,6 +33,11 @@ export default function VehicleDetailPage() {
     const [activeTab, setActiveTab] = useState('stammdaten');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [savingMaint, setSavingMaint] = useState(false);
+    const [maintError, setMaintError] = useState('');
+
+    // Vehicle edit modal
+    const [showEditModal, setShowEditModal] = useState(false);
     const [editData, setEditData] = useState<Record<string, any>>({});
 
     // Maintenance form
@@ -63,6 +68,37 @@ export default function VehicleDetailPage() {
     const [showToken, setShowToken] = useState(false);
     const [tokenCopied, setTokenCopied] = useState(false);
 
+    const populateEditData = (v: Vehicle) => {
+        setEditData({
+            licensePlate: v.license_plate,
+            brand: v.brand,
+            model: v.model,
+            year: v.year,
+            color: v.color,
+            vin: v.vin,
+            hsn: v.hsn,
+            tsn: v.tsn,
+            mileage: v.mileage,
+            purchaseDate: v.purchase_date,
+            purchasePrice: v.purchase_price,
+            nextTuevDate: v.next_tuev_date,
+            udpToken: v.udp_token,
+            fuelTypeVehicle: v.fuel_type_vehicle,
+            engineType: v.engine_type,
+            powerPs: v.power_ps,
+            displacementCc: v.displacement_cc,
+            transmission: v.transmission,
+            drivetrain: v.drivetrain,
+            doors: v.doors,
+            seats: v.seats,
+            curbWeightKg: v.curb_weight_kg,
+            firstRegistration: v.first_registration,
+            insuranceCompany: v.insurance_company,
+            insuranceNumber: v.insurance_number,
+            notes: v.notes,
+        });
+    };
+
     const fetchData = useCallback(async () => {
         try {
             const [v, r] = await Promise.all([
@@ -71,21 +107,7 @@ export default function VehicleDetailPage() {
             ]);
             setVehicle(v);
             setRecords(r);
-            setEditData({
-                licensePlate: v.license_plate,
-                brand: v.brand,
-                model: v.model,
-                year: v.year,
-                color: v.color,
-                vin: v.vin,
-                hsn: v.hsn,
-                tsn: v.tsn,
-                mileage: v.mileage,
-                purchaseDate: v.purchase_date,
-                purchasePrice: v.purchase_price,
-                nextTuevDate: v.next_tuev_date,
-                udpToken: v.udp_token,
-            });
+            populateEditData(v);
         } catch (err) {
             console.error(err);
         } finally {
@@ -112,11 +134,12 @@ export default function VehicleDetailPage() {
         return () => { ws?.close(); };
     }, [vehicle, vehicleId]);
 
-    const handleSave = async () => {
+    const handleSaveVehicle = async () => {
         setSaving(true);
         try {
             await api.vehicles.update(vehicleId, editData);
-            fetchData();
+            await fetchData();
+            setShowEditModal(false);
         } catch (err) {
             console.error(err);
         } finally {
@@ -124,7 +147,15 @@ export default function VehicleDetailPage() {
         }
     };
 
+    const handleOpenEdit = () => {
+        if (vehicle) populateEditData(vehicle);
+        setShowEditModal(true);
+    };
+
     const handleAddMaintenance = async () => {
+        if (savingMaint) return;
+        setSavingMaint(true);
+        setMaintError('');
         try {
             const data = {
                 ...maintForm,
@@ -132,6 +163,8 @@ export default function VehicleDetailPage() {
                 intervalKm: maintForm.intervalKm ? Number(maintForm.intervalKm) : undefined,
                 intervalEngineHours: maintForm.intervalEngineHours ? Number(maintForm.intervalEngineHours) : undefined,
             };
+
+            console.log('Saving maintenance:', { vehicleId, editingRecordId, data });
 
             if (editingRecordId) {
                 await api.maintenance.update(vehicleId, editingRecordId, data);
@@ -142,7 +175,12 @@ export default function VehicleDetailPage() {
             setEditingRecordId(null);
             setMaintForm({ type: 'oil_change', title: '', description: '', date: '', mileage: 0, cost: 0, fuelAmount: 0, fuelPricePerLiter: 0, fuelType: 'Super E5', intervalDays: '', intervalKm: '', intervalEngineHours: '' });
             fetchData();
-        } catch (err) { console.error(err); }
+        } catch (err: any) {
+            console.error('Maintenance save error:', err);
+            setMaintError(err?.message || 'Fehler beim Speichern');
+        } finally {
+            setSavingMaint(false);
+        }
     };
 
     const handleEditRecord = (r: MaintenanceRecord) => {
@@ -240,7 +278,7 @@ export default function VehicleDetailPage() {
     if (!vehicle) return <div className="empty-state"><p>Fahrzeug nicht gefunden</p></div>;
 
     const tabs = [
-        { id: 'stammdaten', label: 'Stammdaten' },
+        { id: 'stammdaten', label: 'Übersicht' },
         { id: 'wartung', label: 'Wartung' },
         { id: 'historie', label: 'Historie' },
         { id: 'kalender', label: 'Kalender' },
@@ -250,6 +288,133 @@ export default function VehicleDetailPage() {
     const vehicleImageUrl = vehicle.image_path
         ? `${config.apiUrl}${vehicle.image_path}`
         : null;
+
+    // ─── Helper: check if a field has a meaningful value ───
+    const hasValue = (val: any) => {
+        if (val === null || val === undefined || val === '') return false;
+        if (typeof val === 'number' && val === 0) return false;
+        return true;
+    };
+
+    // ─── Info items for read-only overview ───
+    type InfoItem = { label: string; value: string; icon?: React.ReactNode };
+
+    const vehicleInfoSections: { title: string; icon: React.ReactNode; items: InfoItem[] }[] = [
+        {
+            title: 'Fahrzeug',
+            icon: <Car size={18} />,
+            items: [
+                hasValue(vehicle.license_plate) && { label: 'Kennzeichen', value: vehicle.license_plate },
+                hasValue(vehicle.brand) && { label: 'Marke', value: vehicle.brand },
+                hasValue(vehicle.model) && { label: 'Modell', value: vehicle.model },
+                hasValue(vehicle.year) && { label: 'Baujahr', value: String(vehicle.year) },
+                hasValue(vehicle.color) && { label: 'Farbe', value: vehicle.color },
+                hasValue(vehicle.doors) && { label: 'Türen', value: String(vehicle.doors) },
+                hasValue(vehicle.seats) && { label: 'Sitze', value: String(vehicle.seats) },
+                hasValue(vehicle.curb_weight_kg) && { label: 'Leergewicht', value: `${vehicle.curb_weight_kg.toLocaleString('de-DE')} kg` },
+                hasValue(vehicle.first_registration) && { label: 'Erstzulassung', value: new Date(vehicle.first_registration).toLocaleDateString('de-DE') },
+            ].filter(Boolean) as InfoItem[],
+        },
+        {
+            title: 'Motor & Antrieb',
+            icon: <Cog size={18} />,
+            items: [
+                hasValue(vehicle.engine_type) && { label: 'Motorart', value: vehicle.engine_type },
+                hasValue(vehicle.fuel_type_vehicle) && { label: 'Kraftstoff', value: vehicle.fuel_type_vehicle },
+                hasValue(vehicle.power_ps) && { label: 'Leistung', value: `${vehicle.power_ps} PS` },
+                hasValue(vehicle.displacement_cc) && { label: 'Hubraum', value: `${vehicle.displacement_cc.toLocaleString('de-DE')} ccm` },
+                hasValue(vehicle.transmission) && { label: 'Getriebe', value: vehicle.transmission },
+                hasValue(vehicle.drivetrain) && { label: 'Antrieb', value: vehicle.drivetrain },
+            ].filter(Boolean) as InfoItem[],
+        },
+        {
+            title: 'Dokumente & Identifikation',
+            icon: <FileBarChart size={18} />,
+            items: [
+                hasValue(vehicle.vin) && { label: 'FIN / VIN', value: vehicle.vin },
+                hasValue(vehicle.hsn) && { label: 'HSN', value: vehicle.hsn },
+                hasValue(vehicle.tsn) && { label: 'TSN', value: vehicle.tsn },
+                hasValue(vehicle.next_tuev_date) && { label: 'Nächster TÜV', value: new Date(vehicle.next_tuev_date).toLocaleDateString('de-DE') },
+                hasValue(vehicle.insurance_company) && { label: 'Versicherung', value: vehicle.insurance_company },
+                hasValue(vehicle.insurance_number) && { label: 'Versicherungsnr.', value: vehicle.insurance_number },
+            ].filter(Boolean) as InfoItem[],
+        },
+        {
+            title: 'Kosten & Kauf',
+            icon: <FileText size={18} />,
+            items: [
+                hasValue(vehicle.purchase_date) && { label: 'Kaufdatum', value: new Date(vehicle.purchase_date).toLocaleDateString('de-DE') },
+                hasValue(vehicle.purchase_price) && { label: 'Kaufpreis', value: vehicle.purchase_price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) },
+            ].filter(Boolean) as InfoItem[],
+        },
+    ];
+
+    // Filter out sections with no items
+    const visibleSections = vehicleInfoSections.filter(s => s.items.length > 0);
+
+    type EditField = {
+        label: string;
+        key: string;
+        placeholder?: string;
+        type?: string;
+        uppercase?: boolean;
+        textarea?: boolean;
+        selectOptions?: string[];
+    };
+
+    // ─── Edit form field definitions ───
+    const editSections: { title: string; fields: EditField[] }[] = [
+        {
+            title: 'Fahrzeug',
+            fields: [
+                { label: 'Kennzeichen', key: 'licensePlate', placeholder: 'LI-E 236', uppercase: true },
+                { label: 'Marke', key: 'brand', placeholder: 'z.B. BMW' },
+                { label: 'Modell', key: 'model', placeholder: 'z.B. 320i' },
+                { label: 'Baujahr', key: 'year', type: 'number', placeholder: '2023' },
+                { label: 'Farbe', key: 'color', placeholder: 'z.B. Schwarz' },
+                { label: 'Türen', key: 'doors', type: 'number', placeholder: '4' },
+                { label: 'Sitze', key: 'seats', type: 'number', placeholder: '5' },
+                { label: 'Leergewicht (kg)', key: 'curbWeightKg', type: 'number', placeholder: '1450' },
+                { label: 'Erstzulassung', key: 'firstRegistration', type: 'date' },
+            ],
+        },
+        {
+            title: 'Motor & Antrieb',
+            fields: [
+                { label: 'Motorart', key: 'engineType', placeholder: 'z.B. Benzin, Diesel, Elektro', selectOptions: ['', 'Benziner', 'Diesel', 'Elektro', 'Hybrid (Benzin)', 'Hybrid (Diesel)', 'Plug-In Hybrid', 'Erdgas (CNG)', 'Autogas (LPG)', 'Wasserstoff'] },
+                { label: 'Kraftstoff', key: 'fuelTypeVehicle', placeholder: 'z.B. Super E5', selectOptions: ['', 'Super E5', 'Super E10', 'Super Plus', 'Diesel', 'Strom', 'Erdgas (CNG)', 'Autogas (LPG)', 'Wasserstoff'] },
+                { label: 'Leistung (PS)', key: 'powerPs', type: 'number', placeholder: '150' },
+                { label: 'Hubraum (ccm)', key: 'displacementCc', type: 'number', placeholder: '1998' },
+                { label: 'Getriebe', key: 'transmission', placeholder: 'z.B. Automatik', selectOptions: ['', 'Schaltgetriebe', 'Automatik', 'Doppelkupplung (DSG)', 'CVT', 'Halbautomatik'] },
+                { label: 'Antrieb', key: 'drivetrain', placeholder: 'z.B. Frontantrieb', selectOptions: ['', 'Frontantrieb', 'Heckantrieb', 'Allradantrieb'] },
+            ],
+        },
+        {
+            title: 'Dokumente & Identifikation',
+            fields: [
+                { label: 'FIN / VIN', key: 'vin', placeholder: 'WBA...', uppercase: true },
+                { label: 'HSN', key: 'hsn', placeholder: '0005', uppercase: true },
+                { label: 'TSN', key: 'tsn', placeholder: 'ABC', uppercase: true },
+                { label: 'Nächster TÜV', key: 'nextTuevDate', type: 'date' },
+                { label: 'Versicherung', key: 'insuranceCompany', placeholder: 'z.B. HUK-Coburg' },
+                { label: 'Versicherungsnr.', key: 'insuranceNumber', placeholder: 'Vertragsnummer' },
+            ],
+        },
+        {
+            title: 'Kosten & Kauf',
+            fields: [
+                { label: 'Kilometerstand', key: 'mileage', type: 'number' },
+                { label: 'Kaufdatum', key: 'purchaseDate', type: 'date' },
+                { label: 'Kaufpreis (€)', key: 'purchasePrice', type: 'number' },
+            ],
+        },
+        {
+            title: 'Notizen',
+            fields: [
+                { label: 'Notizen', key: 'notes', textarea: true, placeholder: 'Eigene Anmerkungen zum Fahrzeug...' },
+            ],
+        },
+    ];
 
     return (
         <div>
@@ -296,9 +461,14 @@ export default function VehicleDetailPage() {
                         <p className="page-subtitle">{vehicle.brand} {vehicle.model} {vehicle.year > 0 ? `(${vehicle.year})` : ''}</p>
                     </div>
                 </div>
-                <button className="btn btn-danger btn-sm" onClick={handleDeleteVehicle}>
-                    <Trash2 size={14} /> Löschen
-                </button>
+                <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+                    <button className="btn btn-secondary btn-sm" onClick={handleOpenEdit}>
+                        <Edit3 size={14} /> Bearbeiten
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={handleDeleteVehicle}>
+                        <Trash2 size={14} /> Löschen
+                    </button>
+                </div>
             </div>
 
             {/* Tabs */}
@@ -310,43 +480,71 @@ export default function VehicleDetailPage() {
                 ))}
             </div>
 
-            {/* ─── Stammdaten Tab ──────────────────── */}
+            {/* ─── Übersicht Tab (read-only) ─────────── */}
             {activeTab === 'stammdaten' && (
                 <div className="detail-section" ref={containerRef}>
-                    <div className="grid grid-2">
-                        {[
-                            { label: 'Kennzeichen', key: 'licensePlate', placeholder: 'LI-E 236' },
-                            { label: 'Marke', key: 'brand', placeholder: 'z.B. BMW' },
-                            { label: 'Modell', key: 'model', placeholder: 'z.B. 320i' },
-                            { label: 'Baujahr', key: 'year', type: 'number', placeholder: '2023' },
-                            { label: 'Farbe', key: 'color', placeholder: 'Schwarz' },
-                            { label: 'VIN', key: 'vin', placeholder: 'WBA...' },
-                            { label: 'HSN', key: 'hsn', placeholder: '0005' },
-                            { label: 'TSN', key: 'tsn', placeholder: 'ABC' },
-                            { label: 'Kilometerstand', key: 'mileage', type: 'number' },
-                            { label: 'Kaufdatum', key: 'purchaseDate', type: 'date' },
-                            { label: 'Kaufpreis (€)', key: 'purchasePrice', type: 'number' },
-                            { label: 'Nächster TÜV', key: 'nextTuevDate', type: 'date' },
-                        ].map(field => (
-                            <div className="form-group" key={field.key}>
-                                <label className="form-label">{field.label}</label>
-                                <input
-                                    className="form-input"
-                                    type={field.type || 'text'}
-                                    value={(editData as any)[field.key] ?? ''}
-                                    placeholder={(field as any).placeholder}
-                                    onChange={e => {
-                                        let val = e.target.value;
-                                        if (['licensePlate', 'vin', 'hsn', 'tsn'].includes(field.key)) {
-                                            val = val.toUpperCase();
-                                        }
-                                        setEditData(d => ({ ...d, [field.key]: field.type === 'number' ? Number(val) : val }));
-                                    }}
-                                />
+                    {/* Stats summary */}
+                    <div className="detail-summary">
+                        <div className="card">
+                            <span className="form-label">Kilometerstand</span>
+                            <div style={{ marginTop: 'var(--space-sm)' }}>
+                                <Odometer value={vehicle.mileage} decimal={!!vehicle.last_seen} animate={false} />
                             </div>
-                        ))}
+                        </div>
+                        <div className="card">
+                            <span className="form-label">Gesamtausgaben</span>
+                            <span className="stat-value">{vehicle.total_expenses.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
+                        </div>
+                        <div className="card">
+                            <span className="form-label">Motorlaufzeit</span>
+                            <span className="stat-value">{formattedRuntime}</span>
+                        </div>
                     </div>
 
+                    {/* Read-only vehicle info */}
+                    {visibleSections.length > 0 ? (
+                        <div className="vehicle-info-sections">
+                            {visibleSections.map(section => (
+                                <div className="vehicle-info-card card" key={section.title}>
+                                    <div className="vehicle-info-card-header">
+                                        <span className="vehicle-info-card-icon">{section.icon}</span>
+                                        <h3 className="vehicle-info-card-title">{section.title}</h3>
+                                    </div>
+                                    <div className="vehicle-info-grid">
+                                        {section.items.map(item => (
+                                            <div className="vehicle-info-item" key={item.label}>
+                                                <span className="vehicle-info-label">{item.label}</span>
+                                                <span className="vehicle-info-value">{item.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="empty-state" style={{ marginTop: 'var(--space-lg)' }}>
+                            <Car size={32} />
+                            <p>Noch keine Fahrzeugdaten hinterlegt</p>
+                            <button className="btn btn-primary btn-sm" onClick={handleOpenEdit}>
+                                <Edit3 size={14} /> Daten eingeben
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Notes */}
+                    {hasValue(vehicle.notes) && (
+                        <div className="card" style={{ marginTop: 'var(--space-lg)' }}>
+                            <div className="vehicle-info-card-header">
+                                <span className="vehicle-info-card-icon"><StickyNote size={18} /></span>
+                                <h3 className="vehicle-info-card-title">Notizen</h3>
+                            </div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.7, marginTop: 'var(--space-sm)' }}>
+                                {vehicle.notes}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* UDP Token */}
                     <div className="card" style={{ marginTop: 'var(--space-lg)', background: 'var(--bg-base)' }}>
                         <div className="form-group">
                             <label className="form-label">UDP Token (für Live-Datenübertragung)</label>
@@ -354,7 +552,7 @@ export default function VehicleDetailPage() {
                                 <div style={{ position: 'relative', flex: 1 }}>
                                     <input
                                         className="form-input"
-                                        value={editData.udpToken ?? ''}
+                                        value={vehicle.udp_token ?? ''}
                                         readOnly
                                         style={{
                                             fontFamily: 'var(--font-mono)',
@@ -376,7 +574,7 @@ export default function VehicleDetailPage() {
                                 <button
                                     className="btn btn-ghost btn-icon"
                                     onClick={() => {
-                                        navigator.clipboard.writeText(editData.udpToken ?? '');
+                                        navigator.clipboard.writeText(vehicle.udp_token ?? '');
                                         setTokenCopied(true);
                                         setTimeout(() => setTokenCopied(false), 2000);
                                     }}
@@ -391,29 +589,67 @@ export default function VehicleDetailPage() {
                             </p>
                         </div>
                     </div>
-
-                    <div className="detail-summary">
-                        <div className="card">
-                            <span className="form-label">Kilometerstand</span>
-                            <div style={{ marginTop: 'var(--space-sm)' }}>
-                                <Odometer value={vehicle.mileage} decimal={!!vehicle.last_seen} animate={false} />
-                            </div>
-                        </div>
-                        <div className="card">
-                            <span className="form-label">Gesamtausgaben</span>
-                            <span className="stat-value">{vehicle.total_expenses.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
-                        </div>
-                        <div className="card">
-                            <span className="form-label">Motorlaufzeit</span>
-                            <span className="stat-value">{formattedRuntime}</span>
-                        </div>
-                    </div>
-
-                    <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ marginTop: 'var(--space-lg)' }}>
-                        <Save size={16} /> {saving ? 'Speichern...' : 'Speichern'}
-                    </button>
                 </div>
             )}
+
+            {/* ─── Vehicle Edit Modal ────────────────── */}
+            <Modal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                onSubmit={handleSaveVehicle}
+                title="Fahrzeug bearbeiten"
+                maxWidth={720}
+                submitLabel={saving ? 'Speichern...' : 'Speichern'}
+                submitDisabled={saving}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+                    {editSections.map(section => (
+                        <div key={section.title}>
+                            <h4 style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-sm)', paddingBottom: 'var(--space-xs)', borderBottom: '1px solid var(--border)' }}>
+                                {section.title}
+                            </h4>
+                            <div className={section.fields.length === 1 && section.fields[0].textarea ? '' : 'grid grid-2'}>
+                                {section.fields.map(field => (
+                                    <div className="form-group" key={field.key}>
+                                        <label className="form-label">{field.label}</label>
+                                        {field.textarea ? (
+                                            <textarea
+                                                className="form-textarea"
+                                                value={editData[field.key] ?? ''}
+                                                placeholder={field.placeholder}
+                                                onChange={e => setEditData(d => ({ ...d, [field.key]: e.target.value }))}
+                                                rows={3}
+                                            />
+                                        ) : field.selectOptions ? (
+                                            <select
+                                                className="form-select"
+                                                value={editData[field.key] ?? ''}
+                                                onChange={e => setEditData(d => ({ ...d, [field.key]: e.target.value }))}
+                                            >
+                                                {field.selectOptions.map((opt: string) => (
+                                                    <option key={opt} value={opt}>{opt || '– Nicht angegeben –'}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                className="form-input"
+                                                type={field.type || 'text'}
+                                                value={editData[field.key] ?? ''}
+                                                placeholder={field.placeholder}
+                                                onChange={e => {
+                                                    let val = e.target.value;
+                                                    if (field.uppercase) val = val.toUpperCase();
+                                                    setEditData(d => ({ ...d, [field.key]: field.type === 'number' ? Number(val) : val }));
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </Modal>
 
             {/* ─── Wartung Tab ─────────────────────── */}
             {activeTab === 'wartung' && (
@@ -438,7 +674,14 @@ export default function VehicleDetailPage() {
                         onSubmit={handleAddMaintenance}
                         title={editingRecordId ? 'Eintrag bearbeiten' : 'Neuer Wartungseintrag'}
                         maxWidth={620}
+                        submitLabel={savingMaint ? 'Speichern...' : 'Speichern'}
+                        submitDisabled={savingMaint}
                     >
+                        {maintError && (
+                            <div style={{ marginBottom: 'var(--space-md)', padding: 'var(--space-sm) var(--space-md)', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-md)', fontSize: '0.8125rem' }}>
+                                {maintError}
+                            </div>
+                        )}
                         <div className="grid grid-2">
                             <div className="form-group">
                                 <label className="form-label">Typ</label>
@@ -508,13 +751,6 @@ export default function VehicleDetailPage() {
                                     <input className="form-input" type="number" value={maintForm.intervalEngineHours} onChange={e => setMaintForm((f: any) => ({ ...f, intervalEngineHours: e.target.value }))} placeholder="Optional" />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => { setShowMaintForm(false); setEditingRecordId(null); }}>Abbrechen</button>
-                            <button className="btn btn-primary" onClick={handleAddMaintenance}>
-                                <Save size={16} /> Speichern
-                            </button>
                         </div>
                     </Modal>
 

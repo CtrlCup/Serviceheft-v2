@@ -40,11 +40,22 @@ app.use('/api/settings', authMiddleware, settingsRoutes);
 app.use('/api/vehicles', authMiddleware, shareRoutes);  // Share management (authenticated)
 app.use('/api/shared', publicShareRouter);               // Public share access (no auth)
 
+// ─── Catch-all for unmatched API routes (return JSON, not HTML) ───
+app.all('/api/*', (_req, res) => {
+    res.status(404).json({ success: false, error: 'API endpoint not found' });
+});
+
 // ─── Serve client build in production ───────────
 const clientDist = path.resolve(__dirname, '../../client/dist');
 app.use(express.static(clientDist));
 app.get('*', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
+});
+
+// ─── Global error handler (return JSON, not HTML) ───
+app.use((err: any, _req: any, res: any, _next: any) => {
+    console.error('Unhandled server error:', err);
+    res.status(500).json({ success: false, error: err?.message || 'Internal server error' });
 });
 
 // ─── Start server ───────────────────────────────

@@ -340,7 +340,7 @@ router.post('/reset', (req: AuthRequest, res: Response): void => {
         // Re-run migrations (creates tables + default admin user)
         runMigrations();
 
-        res.json({ success: true, message: 'System has been reset successfully.' });
+        res.json({ success: true, data: { message: 'System has been reset successfully.' } });
     } catch (err) {
         console.error('Reset error:', err);
         res.status(500).json({ success: false, error: 'Reset failed' });

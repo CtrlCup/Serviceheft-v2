@@ -37,6 +37,20 @@ export interface Vehicle {
     fuel_level: number;
     last_seen: string;
     created_at: string;
+    // Extended detail fields
+    fuel_type_vehicle: string;
+    engine_type: string;
+    power_ps: number;
+    displacement_cc: number;
+    transmission: string;
+    drivetrain: string;
+    doors: number;
+    seats: number;
+    curb_weight_kg: number;
+    first_registration: string;
+    insurance_company: string;
+    insurance_number: string;
+    notes: string;
 }
 
 export type MaintenanceType =

@@ -50,6 +50,75 @@
     margin-top: var(--space-lg);
 }
 
+/* ─── Vehicle Info Overview ──────────────────────── */
+.vehicle-info-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+}
+
+.vehicle-info-card {
+    padding: var(--space-lg);
+}
+
+.vehicle-info-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border);
+}
+
+.vehicle-info-card-icon {
+    color: var(--primary-light);
+    display: flex;
+    align-items: center;
+}
+
+.vehicle-info-card-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.vehicle-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm) var(--space-lg);
+}
+
+.vehicle-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.vehicle-info-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.vehicle-info-value {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+@media (max-width: 480px) {
+    .vehicle-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .vehicle-info-sections {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* ─── History ────────────────────────────────────── */
 .history-list {
     display: flex;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 
 interface ModalProps {
     isOpen: boolean;
@@ -8,6 +8,10 @@ interface ModalProps {
     title: string;
     children: React.ReactNode;
     maxWidth?: number;
+    submitLabel?: string;
+    cancelLabel?: string;
+    submitDisabled?: boolean;
+    hideFooter?: boolean;
 }
 
 /**
@@ -15,8 +19,13 @@ interface ModalProps {
  * - ESC closes the modal
  * - Enter triggers onSubmit (if provided) unless the focus is in a textarea
  * - Click on backdrop closes the modal
+ * - Built-in footer with Cancel/Submit buttons when onSubmit is provided
  */
-export default function Modal({ isOpen, onClose, onSubmit, title, children, maxWidth = 500 }: ModalProps) {
+export default function Modal({
+    isOpen, onClose, onSubmit, title, children, maxWidth = 500,
+    submitLabel = 'Speichern', cancelLabel = 'Abbrechen',
+    submitDisabled = false, hideFooter = false
+}: ModalProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -26,11 +35,13 @@ export default function Modal({ isOpen, onClose, onSubmit, title, children, maxW
                 return;
             }
             if (e.key === 'Enter' && onSubmit) {
-                // Don't submit when typing in textareas or when a button is focused
+                // Don't submit when typing in textareas or interacting with select dropdowns
                 if (e.target instanceof HTMLTextAreaElement) return;
-                if (e.target instanceof HTMLButtonElement) return;
+                if (e.target instanceof HTMLSelectElement) return;
                 e.preventDefault();
-                onSubmit();
+                if (!submitDisabled) {
+                    onSubmit();
+                }
             }
         };
 
@@ -43,7 +54,7 @@ export default function Modal({ isOpen, onClose, onSubmit, title, children, maxW
             document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = '';
         };
-    }, [isOpen, onClose, onSubmit]);
+    }, [isOpen, onClose, onSubmit, submitDisabled]);
 
     if (!isOpen) return null;
 
@@ -89,6 +100,7 @@ export default function Modal({ isOpen, onClose, onSubmit, title, children, maxW
                 }}>
                     <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>{title}</h3>
                     <button
+                        type="button"
                         className="btn btn-ghost btn-icon btn-sm"
                         onClick={onClose}
                         aria-label="Close"
@@ -97,6 +109,14 @@ export default function Modal({ isOpen, onClose, onSubmit, title, children, maxW
                     </button>
                 </div>
                 {children}
+                {onSubmit && !hideFooter && (
+                    <div className="modal-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>{cancelLabel}</button>
+                        <button type="button" className="btn btn-primary" onClick={onSubmit} disabled={submitDisabled}>
+                            <Save size={16} /> {submitLabel}
+                        </button>
+                    </div>
+                )}
             </div>
             <style>{`
                 @keyframes fadeIn {

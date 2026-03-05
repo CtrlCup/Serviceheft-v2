@@ -82,6 +82,8 @@ export default function DashboardPage() {
                 onSubmit={handleCreateVehicle}
                 title="Neues Fahrzeug"
                 maxWidth={480}
+                submitLabel={creating ? 'Erstelle...' : 'Erstellen'}
+                submitDisabled={creating || !newVehicle.licensePlate}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
                     <div className="form-group">
@@ -115,13 +117,6 @@ export default function DashboardPage() {
                             placeholder="z.B. 320d"
                         />
                     </div>
-                </div>
-
-                <div className="modal-actions">
-                    <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Abbrechen</button>
-                    <button className="btn btn-primary" onClick={handleCreateVehicle} disabled={creating || !newVehicle.licensePlate}>
-                        {creating ? 'Erstelle...' : 'Erstellen'}
-                    </button>
                 </div>
             </Modal>
         </div>
