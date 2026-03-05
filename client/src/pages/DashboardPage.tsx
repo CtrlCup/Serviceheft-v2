@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import VehicleCard from '../components/vehicles/VehicleCard';
+import Modal from '../components/Modal';
 import type { Vehicle } from '../types';
 import { Plus, Car } from 'lucide-react';
 import './DashboardPage.css';
@@ -75,55 +76,54 @@ export default function DashboardPage() {
             )}
 
             {/* Add Vehicle Modal */}
-            {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Neues Fahrzeug</h2>
-                            <button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}>✕</button>
-                        </div>
+            <Modal
+                isOpen={showModal}
+                onClose={() => setShowModal(false)}
+                onSubmit={handleCreateVehicle}
+                title="Neues Fahrzeug"
+                maxWidth={480}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                    <div className="form-group">
+                        <label className="form-label">Kennzeichen *</label>
+                        <input
+                            className="form-input"
+                            value={newVehicle.licensePlate}
+                            onChange={e => setNewVehicle(v => ({ ...v, licensePlate: e.target.value.toUpperCase() }))}
+                            placeholder="LI-E 236"
+                            style={{ textTransform: 'uppercase' }}
+                            autoFocus
+                        />
+                    </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-                            <div className="form-group">
-                                <label className="form-label">Kennzeichen *</label>
-                                <input
-                                    className="form-input"
-                                    value={newVehicle.licensePlate}
-                                    onChange={e => setNewVehicle(v => ({ ...v, licensePlate: e.target.value }))}
-                                    placeholder="z.B. KN-AB 1234"
-                                />
-                            </div>
+                    <div className="form-group">
+                        <label className="form-label">Marke</label>
+                        <input
+                            className="form-input"
+                            value={newVehicle.brand}
+                            onChange={e => setNewVehicle(v => ({ ...v, brand: e.target.value }))}
+                            placeholder="z.B. BMW"
+                        />
+                    </div>
 
-                            <div className="form-group">
-                                <label className="form-label">Marke</label>
-                                <input
-                                    className="form-input"
-                                    value={newVehicle.brand}
-                                    onChange={e => setNewVehicle(v => ({ ...v, brand: e.target.value }))}
-                                    placeholder="z.B. BMW"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Modell</label>
-                                <input
-                                    className="form-input"
-                                    value={newVehicle.model}
-                                    onChange={e => setNewVehicle(v => ({ ...v, model: e.target.value }))}
-                                    placeholder="z.B. 320d"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="modal-actions">
-                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Abbrechen</button>
-                            <button className="btn btn-primary" onClick={handleCreateVehicle} disabled={creating || !newVehicle.licensePlate}>
-                                {creating ? 'Erstelle...' : 'Erstellen'}
-                            </button>
-                        </div>
+                    <div className="form-group">
+                        <label className="form-label">Modell</label>
+                        <input
+                            className="form-input"
+                            value={newVehicle.model}
+                            onChange={e => setNewVehicle(v => ({ ...v, model: e.target.value }))}
+                            placeholder="z.B. 320d"
+                        />
                     </div>
                 </div>
-            )}
+
+                <div className="modal-actions">
+                    <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Abbrechen</button>
+                    <button className="btn btn-primary" onClick={handleCreateVehicle} disabled={creating || !newVehicle.licensePlate}>
+                        {creating ? 'Erstelle...' : 'Erstellen'}
+                    </button>
+                </div>
+            </Modal>
         </div>
     );
 }

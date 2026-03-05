@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './pages/LoginPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ForcePasswordChangePage from './pages/ForcePasswordChangePage';
+import SharedVehiclePage from './pages/SharedVehiclePage';
 import Layout from './components/layout/Layout';
 
 
@@ -42,6 +43,7 @@ function AppContent() {
       <Routes>
         <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/" replace /> : <ResetPasswordPage />} />
+        <Route path="/shared/:token" element={<SharedVehiclePage />} />
 
         <Route path="/*" element={
           <ProtectedRoute>

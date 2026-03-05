@@ -13,6 +13,7 @@ import {
 import { formatRuntime } from '../utils/formatRuntime';
 import carPlaceholder from '../assets/car-placeholder.svg';
 import ConfirmationModal from '../components/ConfirmationModal';
+import Modal from '../components/Modal';
 import Odometer from '../components/ui/Odometer';
 import './VehicleDetailPage.css';
 
@@ -314,7 +315,7 @@ export default function VehicleDetailPage() {
                 <div className="detail-section" ref={containerRef}>
                     <div className="grid grid-2">
                         {[
-                            { label: 'Kennzeichen', key: 'licensePlate', placeholder: 'M-XY 1234' },
+                            { label: 'Kennzeichen', key: 'licensePlate', placeholder: 'LI-E 236' },
                             { label: 'Marke', key: 'brand', placeholder: 'z.B. BMW' },
                             { label: 'Modell', key: 'model', placeholder: 'z.B. 320i' },
                             { label: 'Baujahr', key: 'year', type: 'number', placeholder: '2023' },
@@ -417,92 +418,105 @@ export default function VehicleDetailPage() {
             {/* ─── Wartung Tab ─────────────────────── */}
             {activeTab === 'wartung' && (
                 <div className="detail-section">
-                    <button className="btn btn-primary" onClick={() => setShowMaintForm(true)} style={{ marginBottom: 'var(--space-lg)' }}>
+                    <button className="btn btn-primary" onClick={() => {
+                        setMaintForm({
+                            type: 'oil_change', title: '', description: '',
+                            date: new Date().toISOString().slice(0, 10),
+                            mileage: vehicle.mileage || 0, cost: 0,
+                            fuelAmount: 0, fuelPricePerLiter: 0, fuelType: 'Super E5',
+                            intervalDays: '', intervalKm: '', intervalEngineHours: ''
+                        });
+                        setEditingRecordId(null);
+                        setShowMaintForm(true);
+                    }} style={{ marginBottom: 'var(--space-lg)' }}>
                         <Plus size={16} /> Neuer Eintrag
                     </button>
 
-                    {showMaintForm && (
-                        <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-                            <h3 style={{ marginBottom: 'var(--space-md)', fontSize: '1rem' }}>
-                                {editingRecordId ? 'Eintrag bearbeiten' : 'Neuer Wartungseintrag'}
-                            </h3>
-                            <div className="grid grid-2">
-                                <div className="form-group">
-                                    <label className="form-label">Typ</label>
-                                    <select className="form-select" value={maintForm.type} onChange={e => setMaintForm((f: any) => ({ ...f, type: e.target.value }))}>
-                                        {Object.entries(MaintenanceTypeLabels).map(([k, v]) => (
-                                            <option key={k} value={k}>{v}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Titel</label>
-                                    <input className="form-input" value={maintForm.title} onChange={e => setMaintForm((f: any) => ({ ...f, title: e.target.value }))} placeholder="z.B. Ölwechsel 5W-30" />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Datum</label>
-                                    <input className="form-input" type="date" value={maintForm.date} onChange={e => setMaintForm((f: any) => ({ ...f, date: e.target.value }))} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">KM-Stand</label>
-                                    <input className="form-input" type="number" value={maintForm.mileage} onChange={e => setMaintForm((f: any) => ({ ...f, mileage: Number(e.target.value) }))} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Kosten (€)</label>
-                                    <input className="form-input" type="number" step="0.01" value={maintForm.cost} onChange={e => setMaintForm((f: any) => ({ ...f, cost: Number(e.target.value) }))} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Beschreibung</label>
-                                    <textarea className="form-textarea" value={maintForm.description} onChange={e => setMaintForm((f: any) => ({ ...f, description: e.target.value }))} placeholder="Optional" />
-                                </div>
-
-                                {maintForm.type === 'fuel_stop' && (
-                                    <>
-                                        <div className="form-group">
-                                            <label className="form-label">Liter</label>
-                                            <input className="form-input" type="number" step="0.01" value={maintForm.fuelAmount} onChange={e => setMaintForm((f: any) => ({ ...f, fuelAmount: Number(e.target.value) }))} />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Preis/Liter (€)</label>
-                                            <input className="form-input" type="number" step="0.001" value={maintForm.fuelPricePerLiter} onChange={e => setMaintForm((f: any) => ({ ...f, fuelPricePerLiter: Number(e.target.value) }))} />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Kraftstoff</label>
-                                            <select className="form-select" value={maintForm.fuelType} onChange={e => setMaintForm((f: any) => ({ ...f, fuelType: e.target.value }))}>
-                                                <option>Super E5</option>
-                                                <option>Super E10</option>
-                                                <option>Diesel</option>
-                                                <option>Super Plus</option>
-                                            </select>
-                                        </div>
-                                    </>
-                                )}
+                    <Modal
+                        isOpen={showMaintForm}
+                        onClose={() => { setShowMaintForm(false); setEditingRecordId(null); }}
+                        onSubmit={handleAddMaintenance}
+                        title={editingRecordId ? 'Eintrag bearbeiten' : 'Neuer Wartungseintrag'}
+                        maxWidth={620}
+                    >
+                        <div className="grid grid-2">
+                            <div className="form-group">
+                                <label className="form-label">Typ</label>
+                                <select className="form-select" value={maintForm.type} onChange={e => setMaintForm((f: any) => ({ ...f, type: e.target.value }))}>
+                                    {Object.entries(MaintenanceTypeLabels).map(([k, v]) => (
+                                        <option key={k} value={k}>{v}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Titel</label>
+                                <input className="form-input" value={maintForm.title} onChange={e => setMaintForm((f: any) => ({ ...f, title: e.target.value }))} placeholder="z.B. Ölwechsel 5W-30" />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Datum</label>
+                                <input className="form-input" type="date" value={maintForm.date} onChange={e => setMaintForm((f: any) => ({ ...f, date: e.target.value }))} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">KM-Stand</label>
+                                <input className="form-input" type="number" value={maintForm.mileage} onChange={e => setMaintForm((f: any) => ({ ...f, mileage: Number(e.target.value) }))} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Kosten (€)</label>
+                                <input className="form-input" type="number" step="0.01" value={maintForm.cost} onChange={e => setMaintForm((f: any) => ({ ...f, cost: Number(e.target.value) }))} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Beschreibung</label>
+                                <textarea className="form-textarea" value={maintForm.description} onChange={e => setMaintForm((f: any) => ({ ...f, description: e.target.value }))} placeholder="Optional" />
                             </div>
 
-                            <div className="card" style={{ marginTop: 'var(--space-md)', background: 'var(--bg-base)' }}>
-                                <p className="form-label" style={{ marginBottom: 'var(--space-sm)' }}>Erinnerungsintervall (optional)</p>
-                                <div className="grid grid-3">
+                            {maintForm.type === 'fuel_stop' && (
+                                <>
                                     <div className="form-group">
-                                        <label className="form-label">Tage</label>
-                                        <input className="form-input" type="number" value={maintForm.intervalDays} onChange={e => setMaintForm((f: any) => ({ ...f, intervalDays: e.target.value }))} placeholder="z.B. 365" />
+                                        <label className="form-label">Liter</label>
+                                        <input className="form-input" type="number" step="0.01" value={maintForm.fuelAmount} onChange={e => setMaintForm((f: any) => ({ ...f, fuelAmount: Number(e.target.value) }))} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Kilometer</label>
-                                        <input className="form-input" type="number" value={maintForm.intervalKm} onChange={e => setMaintForm((f: any) => ({ ...f, intervalKm: e.target.value }))} placeholder="z.B. 15000" />
+                                        <label className="form-label">Preis/Liter (€)</label>
+                                        <input className="form-input" type="number" step="0.001" value={maintForm.fuelPricePerLiter} onChange={e => setMaintForm((f: any) => ({ ...f, fuelPricePerLiter: Number(e.target.value) }))} />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Motorstunden</label>
-                                        <input className="form-input" type="number" value={maintForm.intervalEngineHours} onChange={e => setMaintForm((f: any) => ({ ...f, intervalEngineHours: e.target.value }))} placeholder="z.B. 500" />
+                                        <label className="form-label">Kraftstoff</label>
+                                        <select className="form-select" value={maintForm.fuelType} onChange={e => setMaintForm((f: any) => ({ ...f, fuelType: e.target.value }))}>
+                                            <option>Super E5</option>
+                                            <option>Super E10</option>
+                                            <option>Diesel</option>
+                                            <option>Super Plus</option>
+                                        </select>
                                     </div>
-                                </div>
-                            </div>
+                                </>
+                            )}
+                        </div>
 
-                            <div className="modal-actions">
-                                <button className="btn btn-secondary" onClick={() => { setShowMaintForm(false); setEditingRecordId(null); }}>Abbrechen</button>
-                                <button className="btn btn-primary" onClick={handleAddMaintenance}>Speichern</button>
+                        <div className="card" style={{ marginTop: 'var(--space-md)', background: 'var(--bg-base)' }}>
+                            <p className="form-label" style={{ marginBottom: 'var(--space-sm)' }}>Erinnerungsintervall (optional)</p>
+                            <div className="grid grid-3">
+                                <div className="form-group">
+                                    <label className="form-label">Tage</label>
+                                    <input className="form-input" type="number" value={maintForm.intervalDays} onChange={e => setMaintForm((f: any) => ({ ...f, intervalDays: e.target.value }))} placeholder="z.B. 365" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Kilometer</label>
+                                    <input className="form-input" type="number" value={maintForm.intervalKm} onChange={e => setMaintForm((f: any) => ({ ...f, intervalKm: e.target.value }))} placeholder="z.B. 15000" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Motorstunden</label>
+                                    <input className="form-input" type="number" value={maintForm.intervalEngineHours} onChange={e => setMaintForm((f: any) => ({ ...f, intervalEngineHours: e.target.value }))} placeholder="Optional" />
+                                </div>
                             </div>
                         </div>
-                    )}
+
+                        <div className="modal-actions">
+                            <button className="btn btn-secondary" onClick={() => { setShowMaintForm(false); setEditingRecordId(null); }}>Abbrechen</button>
+                            <button className="btn btn-primary" onClick={handleAddMaintenance}>
+                                <Save size={16} /> Speichern
+                            </button>
+                        </div>
+                    </Modal>
 
                     {records.length === 0 ? (
                         <div className="empty-state"><Wrench size={32} /><p>Noch keine Wartungseinträge</p></div>

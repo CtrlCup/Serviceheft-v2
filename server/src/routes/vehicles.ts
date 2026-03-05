@@ -30,17 +30,37 @@ const upload = multer({
     },
 });
 
-/** GET /api/vehicles – List user's vehicles */
+/** GET /api/vehicles – List user's vehicles (owned + shared via permissions) */
 router.get('/', (req: AuthRequest, res: Response): void => {
     const db = getDb();
-    const vehicles = db.prepare('SELECT * FROM vehicles WHERE user_id = ? ORDER BY created_at DESC').all(req.userId!);
+    // Admin sees all vehicles, normal users see owned + permitted
+    let vehicles;
+    if (req.userRole === 'admin') {
+        vehicles = db.prepare('SELECT * FROM vehicles ORDER BY created_at DESC').all();
+    } else {
+        vehicles = db.prepare(`
+            SELECT DISTINCT v.* FROM vehicles v
+            LEFT JOIN vehicle_permissions vp ON v.id = vp.vehicle_id AND vp.user_id = ?
+            WHERE v.user_id = ? OR vp.can_view = 1
+            ORDER BY v.created_at DESC
+        `).all(req.userId!, req.userId!);
+    }
     res.json({ success: true, data: vehicles });
 });
 
-/** GET /api/vehicles/:id – Get single vehicle */
+/** GET /api/vehicles/:id – Get single vehicle (owned or permitted) */
 router.get('/:id', (req: AuthRequest, res: Response): void => {
     const db = getDb();
-    const vehicle = db.prepare('SELECT * FROM vehicles WHERE id = ? AND user_id = ?').get(req.params.id, req.userId!) as any;
+    let vehicle;
+    if (req.userRole === 'admin') {
+        vehicle = db.prepare('SELECT * FROM vehicles WHERE id = ?').get(req.params.id) as any;
+    } else {
+        vehicle = db.prepare(`
+            SELECT v.* FROM vehicles v
+            LEFT JOIN vehicle_permissions vp ON v.id = vp.vehicle_id AND vp.user_id = ?
+            WHERE v.id = ? AND (v.user_id = ? OR vp.can_view = 1)
+        `).get(req.userId!, req.params.id, req.userId!) as any;
+    }
     if (!vehicle) {
         res.status(404).json({ success: false, error: 'Vehicle not found' });
         return;
@@ -72,10 +92,19 @@ router.post('/', (req: AuthRequest, res: Response): void => {
     res.status(201).json({ success: true, data: vehicle });
 });
 
-/** PUT /api/vehicles/:id – Update vehicle */
+/** PUT /api/vehicles/:id – Update vehicle (owner or permitted editor) */
 router.put('/:id', (req: AuthRequest, res: Response): void => {
     const db = getDb();
-    const existing = db.prepare('SELECT id FROM vehicles WHERE id = ? AND user_id = ?').get(req.params.id, req.userId!) as any;
+    let existing;
+    if (req.userRole === 'admin') {
+        existing = db.prepare('SELECT id FROM vehicles WHERE id = ?').get(req.params.id) as any;
+    } else {
+        existing = db.prepare(`
+            SELECT v.id FROM vehicles v
+            LEFT JOIN vehicle_permissions vp ON v.id = vp.vehicle_id AND vp.user_id = ?
+            WHERE v.id = ? AND (v.user_id = ? OR vp.can_edit = 1)
+        `).get(req.userId!, req.params.id, req.userId!) as any;
+    }
     if (!existing) {
         res.status(404).json({ success: false, error: 'Vehicle not found' });
         return;

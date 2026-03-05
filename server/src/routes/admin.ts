@@ -347,4 +347,64 @@ router.post('/reset', (req: AuthRequest, res: Response): void => {
     }
 });
 
+// ─── Permission Management ──────────────────────
+
+/** GET /api/admin/vehicles – List ALL vehicles (for permission assignment) */
+router.get('/vehicles', (_req: AuthRequest, res: Response): void => {
+    const db = getDb();
+    const vehicles = db.prepare(`
+        SELECT v.id, v.license_plate, v.brand, v.model, v.user_id, u.username as owner_username
+        FROM vehicles v
+        JOIN users u ON v.user_id = u.id
+        ORDER BY u.username, v.license_plate
+    `).all();
+    res.json({ success: true, data: vehicles });
+});
+
+/** GET /api/admin/permissions/:userId – Get all permissions for a user */
+router.get('/permissions/:userId', (req: AuthRequest, res: Response): void => {
+    const db = getDb();
+    const perms = db.prepare('SELECT * FROM vehicle_permissions WHERE user_id = ?').all(req.params.userId);
+    res.json({ success: true, data: perms });
+});
+
+/** PUT /api/admin/permissions – Set permission for a user on a vehicle */
+router.put('/permissions', (req: AuthRequest, res: Response): void => {
+    const { userId, vehicleId, canView, canEdit } = req.body;
+    if (!userId || !vehicleId) {
+        res.status(400).json({ success: false, error: 'userId and vehicleId are required' });
+        return;
+    }
+
+    const db = getDb();
+
+    if (!canView && !canEdit) {
+        // Remove permission entirely
+        db.prepare('DELETE FROM vehicle_permissions WHERE user_id = ? AND vehicle_id = ?').run(userId, vehicleId);
+    } else {
+        // Upsert permission
+        db.prepare(`
+            INSERT INTO vehicle_permissions (user_id, vehicle_id, can_view, can_edit)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, vehicle_id) DO UPDATE SET can_view = excluded.can_view, can_edit = excluded.can_edit
+        `).run(userId, vehicleId, canView ? 1 : 0, canEdit ? 1 : 0);
+    }
+
+    const perms = db.prepare('SELECT * FROM vehicle_permissions WHERE user_id = ?').all(userId);
+    res.json({ success: true, data: perms });
+});
+
+/** GET /api/admin/permissions – Get ALL permissions (for overview) */
+router.get('/permissions', (_req: AuthRequest, res: Response): void => {
+    const db = getDb();
+    const perms = db.prepare(`
+        SELECT vp.*, u.username, v.license_plate, v.brand, v.model
+        FROM vehicle_permissions vp
+        JOIN users u ON vp.user_id = u.id
+        JOIN vehicles v ON vp.vehicle_id = v.id
+        ORDER BY u.username, v.license_plate
+    `).all();
+    res.json({ success: true, data: perms });
+});
+
 export default router;

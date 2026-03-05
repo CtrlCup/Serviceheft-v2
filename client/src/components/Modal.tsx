@@ -4,29 +4,46 @@ import { X } from 'lucide-react';
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSubmit?: () => void;
     title: string;
     children: React.ReactNode;
     maxWidth?: number;
 }
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth = 500 }: ModalProps) {
+/**
+ * Reusable Modal component.
+ * - ESC closes the modal
+ * - Enter triggers onSubmit (if provided) unless the focus is in a textarea
+ * - Click on backdrop closes the modal
+ */
+export default function Modal({ isOpen, onClose, onSubmit, title, children, maxWidth = 500 }: ModalProps) {
     const dialogRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+                return;
+            }
+            if (e.key === 'Enter' && onSubmit) {
+                // Don't submit when typing in textareas or when a button is focused
+                if (e.target instanceof HTMLTextAreaElement) return;
+                if (e.target instanceof HTMLButtonElement) return;
+                e.preventDefault();
+                onSubmit();
+            }
         };
 
         if (isOpen) {
-            document.addEventListener('keydown', handleEscape);
+            document.addEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'hidden';
         }
 
         return () => {
-            document.removeEventListener('keydown', handleEscape);
+            document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = '';
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, onSubmit]);
 
     if (!isOpen) return null;
 
@@ -41,7 +58,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 500
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(0, 0, 0, 0.4)',
+            background: 'rgba(0, 0, 0, 0.5)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
             padding: 'var(--space-md)',
@@ -59,7 +76,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 500
                     overflowY: 'auto',
                     position: 'relative',
                     animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
                 }}
             >
                 <div style={{
@@ -90,7 +107,8 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 500
                     from { transform: translateY(20px); opacity: 0; scale: 0.95; }
                     to { transform: translateY(0); opacity: 1; scale: 1; }
                 }
-            `}</style>
+            `}
+            </style>
         </div>
     );
 }

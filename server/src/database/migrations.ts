@@ -106,6 +106,30 @@ export function runMigrations(): void {
 
     -- Case-insensitive unique constraint for username
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(lower(username));
+
+    CREATE TABLE IF NOT EXISTS vehicle_shares (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+      share_token TEXT NOT NULL UNIQUE,
+      password_hash TEXT,
+      expires_at TEXT,
+      label TEXT NOT NULL DEFAULT '',
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_share_token ON vehicle_shares(share_token);
+    CREATE INDEX IF NOT EXISTS idx_share_vehicle ON vehicle_shares(vehicle_id);
+
+    CREATE TABLE IF NOT EXISTS vehicle_permissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+      can_view INTEGER NOT NULL DEFAULT 1,
+      can_edit INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(user_id, vehicle_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_perm_user ON vehicle_permissions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_perm_vehicle ON vehicle_permissions(vehicle_id);
   `);
 
   // ─── Incremental migrations for existing databases ────

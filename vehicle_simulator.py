@@ -28,9 +28,12 @@ import random
 
 
 # ─── Standardwerte ───────────────────────────────────
+"""
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 41234
-
+"""
+DEFAULT_HOST = "serviceheft.alex-cloud.eu"
+DEFAULT_PORT = 41234
 
 def send_udp(host: str, port: int, payload: dict) -> None:
     """Sendet ein JSON-Paket per UDP an den Server."""

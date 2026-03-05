@@ -200,5 +200,33 @@ export const api = {
                 method: 'POST',
                 body: JSON.stringify({ confirm: 'RESET' }),
             }),
+
+        // Permission management
+        getAllVehicles: () => request<any[]>('/api/admin/vehicles'),
+        getPermissions: (userId: number) => request<any[]>(`/api/admin/permissions/${userId}`),
+        setPermission: (data: { userId: number; vehicleId: number; canView: boolean; canEdit: boolean }) =>
+            request<any[]>('/api/admin/permissions', { method: 'PUT', body: JSON.stringify(data) }),
+    },
+
+    // ─── Shares ───────────────────────────────────
+    shares: {
+        create: (vehicleId: number, data: { label?: string; expiresAt?: string; password?: string }) =>
+            request<any>(`/api/vehicles/${vehicleId}/shares`, { method: 'POST', body: JSON.stringify(data) }),
+        list: (vehicleId: number) =>
+            request<any[]>(`/api/vehicles/${vehicleId}/shares`),
+        delete: (vehicleId: number, shareId: number) =>
+            request<void>(`/api/vehicles/${vehicleId}/shares/${shareId}`, { method: 'DELETE' }),
     },
 };
+
+// ─── Public API (no auth required) ──────────────
+export async function fetchPublicShare(token: string, password?: string) {
+    const url = new URL(`${config.apiUrl}/api/shared/${token}`);
+    if (password) url.searchParams.set('password', password);
+
+    const res = await fetch(url.toString());
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Zugriff fehlgeschlagen');
+    return json.data;
+}
+

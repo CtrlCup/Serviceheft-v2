@@ -13,6 +13,7 @@ import vehicleRoutes from './routes/vehicles.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import adminRoutes from './routes/admin.js';
 import settingsRoutes from './routes/settings.js';
+import shareRoutes, { publicShareRouter } from './routes/shares.js';
 import { startUdpListener } from './udp/listener.js';
 import { initWebSocket } from './websocket/liveStatus.js';
 import { startNotificationScheduler } from './services/notificationService.js';
@@ -36,6 +37,8 @@ app.use('/api/vehicles', authMiddleware, vehicleRoutes);
 app.use('/api/vehicles', authMiddleware, maintenanceRoutes);
 app.use('/api/admin', authMiddleware, adminMiddleware, adminRoutes);
 app.use('/api/settings', authMiddleware, settingsRoutes);
+app.use('/api/vehicles', authMiddleware, shareRoutes);  // Share management (authenticated)
+app.use('/api/shared', publicShareRouter);               // Public share access (no auth)
 
 // ─── Serve client build in production ───────────
 const clientDist = path.resolve(__dirname, '../../client/dist');
